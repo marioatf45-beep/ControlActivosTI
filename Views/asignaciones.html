@@ -1,0 +1,41 @@
+<section class="container-fluid assignments-page">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div><h2 class="mb-1">Asignaciones y responsivas</h2><p class="text-muted mb-0">Entrega, firma y devolución de activos a empleados o unidades TR.</p></div>
+    <button class="btn btn-primary" id="btnNuevaAsignacion"><i class="fa-solid fa-handshake me-2"></i>Nueva asignación</button>
+  </div>
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="assignment-stat"><span>Asignaciones activas</span><strong id="statAsignacionesActivas">0</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="assignment-stat"><span>Equipos entregados</span><strong id="statEquiposAsignados">0</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="assignment-stat"><span>Devueltas</span><strong id="statAsignacionesDevueltas">0</strong></div></div>
+    <div class="col-6 col-lg-3"><div class="assignment-stat"><span>Disponibles</span><strong id="statEquiposDisponibles">0</strong></div></div>
+  </div>
+  <div class="card shadow-sm border-0">
+    <div class="card-body assignment-toolbar">
+      <div class="assignment-search"><i class="fa-solid fa-magnifying-glass"></i><input class="form-control" id="buscarAsignacion" type="search" placeholder="Buscar folio, empleado, unidad o activo"></div>
+      <select class="form-select" id="filtroAsignacion"><option value="">Todos los estados</option><option value="Activa">Activas</option><option value="Devuelta">Devueltas</option></select>
+    </div>
+    <div class="table-responsive"><table class="table align-middle assignment-table mb-0" id="tablaAsignaciones"><thead><tr><th>Folio</th><th>Asignado a</th><th>Equipos</th><th>Fecha</th><th>Estado</th><th class="text-end">Acciones</th></tr></thead><tbody></tbody></table></div>
+    <div class="assignment-empty" id="asignacionesVacio" hidden><i class="fa-solid fa-file-signature"></i><strong>Sin asignaciones para mostrar</strong><span>Crea una asignación para generar la primera carta responsiva.</span></div>
+  </div>
+  <div class="modal fade" id="modalAsignacion" tabindex="-1" aria-labelledby="tituloModalAsignacion" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><form id="formAsignacion" novalidate>
+      <div class="modal-header"><div><h3 class="modal-title fs-5" id="tituloModalAsignacion">Nueva asignación</h3><small class="text-muted">La carta responsiva se descargará al confirmar.</small></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+      <div class="modal-body">
+        <div class="row g-3 mb-4">
+          <div class="col-md-3"><label class="form-label" for="tipoDestinoAsignacion">Asignar a *</label><select class="form-select" id="tipoDestinoAsignacion" required><option value="Empleado">Empleado</option><option value="UnidadTR">Unidad TR</option></select></div>
+          <div class="col-md-3" id="grupoEmpleadoAsignacion"><label class="form-label" for="empleadoAsignacion">Empleado responsable *</label><select class="form-select" id="empleadoAsignacion"><option value="">Seleccionar empleado</option></select><div class="invalid-feedback">Selecciona un empleado activo.</div></div>
+          <div class="col-md-3" id="grupoUnidadAsignacion" hidden><label class="form-label" for="unidadAsignacion">Unidad TR *</label><select class="form-select" id="unidadAsignacion"><option value="">Seleccionar unidad TR</option></select><div class="invalid-feedback">Selecciona una unidad TR activa.</div></div>
+          <div class="col-md-3"><label class="form-label" for="fechaAsignacion">Fecha de entrega *</label><input class="form-control" id="fechaAsignacion" type="date" required></div>
+          <div class="col-md-3"><label class="form-label" for="entregaPor">Entrega por *</label><input class="form-control" id="entregaPor" maxlength="120" value="Administrador de TI" required></div>
+        </div>
+        <h4 class="assignment-section-title">Equipos disponibles *</h4>
+        <div class="asset-picker" id="activosDisponibles"></div><div class="invalid-assets" id="errorActivos" hidden>Selecciona al menos un equipo disponible.</div>
+        <div class="row g-4 mt-1">
+          <div class="col-lg-6"><label class="form-label" for="observacionesAsignacion">Estado físico, accesorios y observaciones</label><textarea class="form-control" id="observacionesAsignacion" rows="5" placeholder="Ej. Equipo en buen estado, incluye cargador y funda."></textarea></div>
+          <div class="col-lg-6"><div class="d-flex justify-content-between align-items-center"><label class="form-label mb-1" id="etiquetaFirmaAsignacion">Firma del empleado *</label><button class="btn btn-sm btn-link text-danger" type="button" id="btnLimpiarFirma">Limpiar firma</button></div><canvas id="firmaEmpleado" class="signature-pad" aria-label="Área para firma de conformidad"></canvas><small class="text-muted">Firma con el mouse o desde una pantalla táctil.</small><div class="invalid-assets" id="errorFirma" hidden>Solicita la firma de conformidad.</div></div>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-light" type="button" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" type="submit"><i class="fa-solid fa-file-pdf me-2"></i>Asignar y generar responsiva</button></div>
+    </form></div></div>
+  </div>
+</section>

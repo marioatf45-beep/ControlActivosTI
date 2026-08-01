@@ -1,0 +1,27 @@
+<div class="reports-header">
+  <div><h2 class="mb-1">Reportes ejecutivos</h2><p class="text-muted mb-0">Indicadores, costos y trazabilidad de los activos de TI.</p></div>
+  <div class="reports-actions"><button class="btn btn-outline-primary" id="btnReportePDF"><i class="fa-solid fa-file-pdf me-1"></i>Reporte PDF</button><button class="btn btn-primary" id="btnReporteExcel"><i class="fa-solid fa-file-excel me-1"></i>Exportar Excel</button></div>
+</div>
+
+<div class="card border-0 shadow-sm reports-filters"><div class="card-body row g-3 align-items-end">
+  <div class="col-md-3"><label class="form-label" for="reporteDesde">Desde</label><input class="form-control" id="reporteDesde" type="date"></div>
+  <div class="col-md-3"><label class="form-label" for="reporteHasta">Hasta</label><input class="form-control" id="reporteHasta" type="date"></div>
+  <div class="col-md-3"><label class="form-label" for="reporteEstado">Estado del activo</label><select class="form-select" id="reporteEstado"><option value="">Todos</option><option>Disponible</option><option>Asignado</option><option>Reparación</option><option>Baja</option></select></div>
+  <div class="col-md-3"><button class="btn btn-dark w-100" id="btnLimpiarReporte"><i class="fa-solid fa-rotate-left me-1"></i>Restablecer filtros</button></div>
+</div></div>
+
+<div class="reports-kpis">
+  <article><i class="fa-solid fa-computer"></i><span>Activos</span><strong id="repTotalActivos">0</strong></article>
+  <article><i class="fa-solid fa-user-check"></i><span>Asignados</span><strong id="repAsignados">0</strong></article>
+  <article><i class="fa-solid fa-screwdriver-wrench"></i><span>Mantenimientos</span><strong id="repMantenimientos">0</strong></article>
+  <article><i class="fa-solid fa-coins"></i><span>Costo de mantenimiento</span><strong id="repCosto">$0.00</strong></article>
+  <article><i class="fa-solid fa-clock"></i><span>Tiempo técnico</span><strong id="repTiempo">00:00:00</strong></article>
+  <article><i class="fa-solid fa-triangle-exclamation"></i><span>Revisión vencida/próxima</span><strong id="repAlertas">0</strong></article>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6"><div class="card border-0 shadow-sm report-chart"><div class="card-body"><h3>Activos por estado</h3><canvas id="graficaEstados"></canvas></div></div></div>
+  <div class="col-lg-6"><div class="card border-0 shadow-sm report-chart"><div class="card-body"><h3>Mantenimiento por tipo</h3><canvas id="graficaMantenimientos"></canvas></div></div></div>
+</div>
+
+<div class="card border-0 shadow-sm"><div class="card-body"><div class="report-table-title"><h3>Detalle de activos</h3><span id="repResultado">0 registros</span></div></div><div class="table-responsive"><table class="table align-middle mb-0 report-table"><thead><tr><th>Activo</th><th>Serie</th><th>Categoría</th><th>Estado</th><th>Responsable</th><th>Próximo mantenimiento</th></tr></thead><tbody id="tablaReporteActivos"></tbody></table></div><div class="report-empty" id="reporteVacio" hidden><i class="fa-solid fa-chart-column"></i><strong>Sin información para los filtros seleccionados</strong></div></div>

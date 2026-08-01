@@ -1,0 +1,500 @@
+/* =====================================================
+   Control Activos TI v1.0.0
+   Autor: Mario Torres Flores
+   ===================================================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+:root{
+
+    --primary:#d7192d;
+    --primary-dark:#a90f20;
+    --primary-soft:#fff0f2;
+    --secondary:#303136;
+    --success:#198754;
+    --warning:#ffc107;
+    --danger:#dc3545;
+    --light:#f4f4f5;
+    --white:#ffffff;
+    --dark:#111827;
+    --gray:#6c757d;
+
+    --sidebar-width:260px;
+
+}
+
+body{
+
+    font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+    background:var(--light);
+    color:#333;
+
+}
+
+.wrapper{
+
+    display:flex;
+    min-height:100vh;
+
+}
+
+/* ===============================
+SIDEBAR
+================================= */
+
+.sidebar{
+
+    width:var(--sidebar-width);
+    background:linear-gradient(180deg,#35363b 0%,#28292d 100%);
+    color:white;
+    position:fixed;
+    top:0;
+    left:0;
+    bottom:0;
+
+    overflow:auto;
+
+}
+
+.logo{
+
+    padding:30px 20px;
+
+    text-align:center;
+
+    border-bottom:1px solid rgba(255,255,255,.10);
+    background:#303136;
+
+}
+
+.logo i{
+
+    font-size:42px;
+
+    color:var(--primary);
+
+    margin-bottom:10px;
+
+}
+
+.logo h3{
+
+    font-size:20px;
+
+    font-weight:600;
+
+}
+
+.sidebar ul{
+
+    list-style:none;
+
+    margin-top:20px;
+
+}
+
+.sidebar li{
+
+    width:100%;
+
+}
+
+.sidebar a{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:15px;
+
+    color:white;
+
+    text-decoration:none;
+
+    padding:16px 25px;
+
+    transition:.25s;
+
+}
+
+.sidebar a:hover{
+
+    background:rgba(215,25,45,.18);
+
+    padding-left:35px;
+
+}
+
+.sidebar li.active{
+
+    background:linear-gradient(90deg,var(--primary-dark),var(--primary));
+    box-shadow:inset 4px 0 0 #ff5364;
+
+}
+
+.sidebar li.active a{
+
+    color:white;
+
+}
+
+/* ===============================
+MAIN
+================================= */
+
+.main-content{
+
+    margin-left:var(--sidebar-width);
+
+    width:100%;
+
+}
+
+/* ===============================
+TOPBAR
+================================= */
+
+.topbar{
+
+    background:white;
+
+    height:70px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:0 30px;
+
+    border-bottom:3px solid var(--primary);
+    box-shadow:0 2px 8px rgba(0,0,0,.08);
+
+    position:sticky;
+
+    top:0;
+
+    z-index:100;
+
+}
+
+#menuButton{
+
+    border:none;
+
+    background:none;
+
+    font-size:22px;
+
+    cursor:pointer;
+
+}
+
+.search{
+
+    flex:1;
+
+    margin:0 30px;
+
+}
+
+.search input{
+
+    width:100%;
+
+    padding:10px 15px;
+
+    border-radius:8px;
+
+    border:1px solid #ddd;
+
+}
+
+.user{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+}
+
+.user i{
+
+    font-size:30px;
+
+    color:var(--primary);
+
+}
+
+/* ===============================
+CONTENT
+================================= */
+
+.content{
+
+    padding:30px;
+
+}
+
+.content h2{
+
+    margin-bottom:30px;
+
+    font-weight:700;
+
+}
+
+/* ===============================
+CARDS
+================================= */
+
+.cards{
+
+    display:grid;
+
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+
+    gap:25px;
+
+}
+
+.card{
+
+    background:white;
+
+    border-radius:12px;
+
+    padding:25px;
+
+    box-shadow:0 6px 15px rgba(0,0,0,.08);
+
+    border-top:3px solid rgba(215,25,45,.85);
+    transition:.25s;
+
+}
+
+.card:hover{
+
+    transform:translateY(-5px);
+
+}
+
+.card i{
+
+    font-size:40px;
+
+    color:var(--primary);
+
+    margin-bottom:20px;
+
+}
+
+.card h3{
+
+    font-size:34px;
+
+    font-weight:700;
+
+}
+
+.card p{
+
+    color:var(--gray);
+
+    margin-top:10px;
+
+}
+
+/* ===============================
+WELCOME
+================================= */
+
+.welcome{
+
+    margin-top:35px;
+
+    background:white;
+
+    border-radius:12px;
+
+    padding:30px;
+
+    box-shadow:0 5px 15px rgba(0,0,0,.08);
+
+}
+
+.welcome h3{
+
+    margin-bottom:15px;
+
+}
+
+/* ===============================
+RESPONSIVE
+================================= */
+
+@media(max-width:991px){
+
+.sidebar{
+
+    width:75px;
+
+}
+
+.logo h3{
+
+    display:none;
+
+}
+
+.sidebar a{
+
+    justify-content:center;
+
+}
+
+.sidebar a span{
+
+    display:none;
+
+}
+
+.main-content{
+
+    margin-left:75px;
+
+}
+
+}
+
+@media(max-width:768px){
+
+.topbar{
+
+    padding:15px;
+
+}
+
+.search{
+
+    display:none;
+
+}
+
+.cards{
+
+    grid-template-columns:1fr;
+
+}
+
+.main-content{
+
+    margin-left:75px;
+
+}
+
+}
+/* ===============================
+   Sidebar colapsable
+================================= */
+
+.sidebar-close{
+
+    transform:translateX(-100%);
+
+}
+
+.sidebar{
+
+    transition:.3s;
+
+}
+
+/* ===============================
+   Paleta corporativa D-Troy
+================================= */
+
+.btn-primary{
+    --bs-btn-bg:var(--primary);
+    --bs-btn-border-color:var(--primary);
+    --bs-btn-hover-bg:var(--primary-dark);
+    --bs-btn-hover-border-color:var(--primary-dark);
+    --bs-btn-active-bg:var(--primary-dark);
+    --bs-btn-active-border-color:var(--primary-dark);
+}
+
+.btn-outline-primary{
+    --bs-btn-color:var(--primary);
+    --bs-btn-border-color:var(--primary);
+    --bs-btn-hover-bg:var(--primary);
+    --bs-btn-hover-border-color:var(--primary);
+    --bs-btn-active-bg:var(--primary-dark);
+    --bs-btn-active-border-color:var(--primary-dark);
+}
+
+.form-control:focus,
+.form-select:focus{
+    border-color:#e95b69;
+    box-shadow:0 0 0 .25rem rgba(215,25,45,.16);
+}
+
+a,
+.page-link{
+    color:var(--primary);
+}
+
+/* Logotipo corporativo */
+.logo .brand-logo{
+    display:block;
+    width:min(205px,100%);
+    height:auto;
+    margin:0 auto 12px;
+    border-radius:5px;
+    object-fit:contain;
+}
+
+.logo h3{
+    font-size:16px;
+}
+
+@media(max-width:991px){
+    .logo{
+        padding:20px 8px;
+    }
+
+    .logo .brand-logo{
+        width:58px;
+        margin-bottom:0;
+    }
+}
+
+/* Dashboard tipo portal corporativo */
+.dashboard-home{padding:0 30px 38px;background:#f1f2f4;min-height:calc(100vh - 70px)}
+.dashboard-hero{position:relative;overflow:hidden;min-height:285px;margin:0 -30px 24px;padding:48px clamp(24px,7vw,90px);display:flex;align-items:center;color:#fff;background:linear-gradient(110deg,rgba(37,38,43,.98),rgba(56,57,63,.91)),radial-gradient(circle at 78% 15%,#d7192d 0 2%,transparent 28%)}
+.dashboard-hero::before,.dashboard-hero::after{content:"";position:absolute;right:-8%;width:55%;height:130px;background:rgba(215,25,45,.24);transform:skewX(-28deg) rotate(-7deg)}
+.dashboard-hero::before{top:12px}.dashboard-hero::after{right:12%;bottom:-85px;background:rgba(215,25,45,.55)}
+.dashboard-hero-content{position:relative;z-index:1;width:min(900px,100%)}
+.dashboard-eyebrow{display:block;margin-bottom:10px;color:#ff6877;font-size:.76rem;font-weight:800;letter-spacing:.16em}
+.dashboard-hero h2{margin:0 0 8px;color:#fff;font-size:clamp(1.9rem,3vw,2.8rem);font-weight:700}
+.dashboard-hero p{margin:0 0 24px;color:rgba(255,255,255,.78);font-size:1.04rem}
+.dashboard-search{height:58px;display:flex;align-items:center;gap:14px;padding:0 20px;background:#fff;border-radius:7px;box-shadow:0 14px 35px rgba(0,0,0,.2)}
+.dashboard-search i{color:var(--primary);font-size:1.15rem}.dashboard-search input{width:100%;border:0;outline:0;font-size:1rem;color:#303136}
+.cards.dashboard-kpis{grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.dashboard-kpis .card{display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:14px;min-height:92px;padding:18px 20px;border:0;border-left:4px solid var(--primary);border-radius:6px;box-shadow:0 3px 12px rgba(28,29,34,.07)}
+.dashboard-kpis .card:hover{transform:none}.dashboard-kpis .card i{grid-row:1/3;margin:0;font-size:1.65rem}.dashboard-kpis .card h3{margin:0;font-size:1.75rem;line-height:1}.dashboard-kpis .card p{margin:4px 0 0;font-size:.84rem}
+.dashboard-modules{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.dashboard-modules button{position:relative;min-height:142px;display:grid;grid-template-columns:52px 1fr;gap:16px;align-items:start;padding:25px 22px;text-align:left;background:#fff;border:1px solid #e2e3e6;border-radius:6px;box-shadow:0 3px 10px rgba(28,29,34,.05);transition:.2s}
+.dashboard-modules button:hover{border-color:#ef9aa3;box-shadow:0 9px 24px rgba(36,37,42,.12);transform:translateY(-3px)}
+.dashboard-modules button>i{display:grid;place-items:center;width:52px;height:52px;color:#fff;background:linear-gradient(145deg,#d7192d,#a90f20);border-radius:12px;font-size:1.45rem}
+.dashboard-modules span{display:flex;flex-direction:column;gap:8px}.dashboard-modules strong{color:#292a2f;font-size:1rem}.dashboard-modules small{color:#777b83;line-height:1.35}
+.dashboard-modules em{position:absolute;right:16px;bottom:14px;color:#c8c9cd;font-size:.78rem}.dashboard-modules button:hover em{color:var(--primary)}
+.dashboard-detail .card{border-top:0;border-radius:6px}.dashboard-detail .card i{font-size:inherit;margin:0}
+@media(max-width:1200px){.dashboard-modules{grid-template-columns:repeat(2,1fr)}.cards.dashboard-kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){.dashboard-home{padding:0 15px 25px}.dashboard-hero{min-height:260px;margin:0 -15px 18px;padding:35px 20px}.dashboard-hero p{font-size:.92rem}.dashboard-search{height:52px}.cards.dashboard-kpis,.dashboard-modules{grid-template-columns:1fr}.dashboard-detail{display:none}.dashboard-modules button{min-height:120px}}

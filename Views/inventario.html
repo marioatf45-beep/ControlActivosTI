@@ -1,0 +1,380 @@
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2 class="mb-1">Inventario de activos</h2>
+            <p class="text-muted mb-0">
+                Registro y control de equipos de TI
+            </p>
+        </div>
+
+        <button
+            type="button"
+            class="btn btn-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#modalActivo"
+        >
+            <i class="fa-solid fa-plus"></i>
+            Nuevo activo
+        </button>
+
+    </div>
+
+    <div class="card shadow-sm">
+
+        <div class="card-body">
+
+            <div class="row g-3 mb-4">
+
+                <div class="col-md-5">
+
+                    <label for="buscarActivo" class="form-label">
+                        Buscar
+                    </label>
+
+                    <input
+                        type="text"
+                        id="buscarActivo"
+                        class="form-control"
+                        placeholder="Activo, serie, marca o responsable"
+                    >
+
+                </div>
+
+                <div class="col-md-3">
+
+                    <label for="filtroCategoria" class="form-label">
+                        Categoría
+                    </label>
+
+                    <select id="filtroCategoria" class="form-select">
+
+                        <option value="">Todas</option>
+                        <option value="Laptop">Laptop</option>
+                        <option value="Desktop">Desktop</option>
+                        <option value="Monitor">Monitor</option>
+                        <option value="Tablet">Tablet</option>
+                        <option value="Teléfono">Teléfono</option>
+                        <option value="Impresora">Impresora</option>
+                        <option value="Accesorio">Accesorio</option>
+                        <option value="Otro">Otro</option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <label for="filtroEstado" class="form-label">
+                        Estado
+                    </label>
+
+                    <select id="filtroEstado" class="form-select">
+
+                        <option value="">Todos</option>
+                        <option value="Disponible">Disponible</option>
+                        <option value="Asignado">Asignado</option>
+                        <option value="Reparación">Reparación</option>
+                        <option value="Baja">Baja</option>
+
+                    </select>
+
+                </div>
+
+                <div class="col-md-2 d-flex align-items-end">
+
+                    <button
+                        type="button"
+                        id="btnExportarInventario"
+                        class="btn btn-success w-100"
+                    >
+                        <i class="fa-solid fa-file-excel"></i>
+                        Exportar
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div class="table-responsive">
+
+                <table
+                    id="tablaInventario"
+                    class="table table-striped table-hover align-middle"
+                >
+
+                    <thead>
+
+                        <tr>
+                            <th>Activo</th>
+                            <th>Serie</th>
+                            <th>Marca</th>
+                            <th>Modelo</th>
+                            <th>Categoría</th>
+                            <th>Estado</th>
+                            <th>Ubicación</th>
+                            <th>Responsable</th>
+                            <th>Acciones</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody></tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Modal de activo -->
+
+<div
+    class="modal fade"
+    id="modalActivo"
+    tabindex="-1"
+    aria-hidden="true"
+>
+
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h5 class="modal-title">
+                    Registro de activo
+                </h5>
+
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Cerrar"
+                ></button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <form id="formActivo">
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+
+                            <label for="activo" class="form-label">
+                                Número de activo *
+                            </label>
+
+                            <input
+                                type="text"
+                                id="activo"
+                                class="form-control"
+                                required
+                            >
+
+                        </div>
+
+                        <div class="col-md-6">
+
+                            <label for="serie" class="form-label">
+                                Número de serie *
+                            </label>
+
+                            <input
+                                type="text"
+                                id="serie"
+                                class="form-control"
+                                required
+                            >
+
+                        </div>
+
+                        <div class="col-md-6">
+
+                            <label for="marca" class="form-label">
+                                Marca
+                            </label>
+
+                            <input
+                                type="text"
+                                id="marca"
+                                class="form-control"
+                            >
+
+                        </div>
+
+                        <div class="col-md-6">
+
+                            <label for="modelo" class="form-label">
+                                Modelo
+                            </label>
+
+                            <input
+                                type="text"
+                                id="modelo"
+                                class="form-control"
+                            >
+
+                        </div>
+
+                        <div class="col-md-6">
+
+                            <label for="categoria" class="form-label">
+                                Categoría
+                            </label>
+
+                            <select id="categoria" class="form-select">
+
+                                <option value="">Seleccionar</option>
+                                <option value="Laptop">Laptop</option>
+                                <option value="Desktop">Desktop</option>
+                                <option value="Monitor">Monitor</option>
+                                <option value="Tablet">Tablet</option>
+                                <option value="Teléfono">Teléfono</option>
+                                <option value="Impresora">Impresora</option>
+                                <option value="Accesorio">Accesorio</option>
+                                <option value="Otro">Otro</option>
+
+                            </select>
+
+                        </div>
+
+                        <div class="col-md-6">
+
+                            <label for="estado" class="form-label">
+                                Estado
+                            </label>
+
+                            <select id="estado" class="form-select">
+
+                                <option value="Disponible">
+                                    Disponible
+                                </option>
+
+                                <option value="Asignado">
+                                    Asignado
+                                </option>
+
+                                <option value="Reparación">
+                                    Reparación
+                                </option>
+
+                                <option value="Baja">
+                                    Baja
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                        <div class="col-md-6">
+
+                            <label for="ubicacion" class="form-label">
+                                Ubicación
+                            </label>
+
+                            <input
+                                type="text"
+                                id="ubicacion"
+                                class="form-control"
+                            >
+
+                        </div>
+
+                        <div class="col-md-6">
+
+                            <label for="responsable" class="form-label">
+                                Responsable
+                            </label>
+
+                            <select
+                                id="responsable"
+                                class="form-control"
+                                aria-describedby="ayudaResponsable"
+                            >
+                                <option value="">Sin asignar</option>
+                            </select>
+
+                            <div id="ayudaResponsable" class="form-text">
+                                Selecciona un empleado activo registrado.
+                            </div>
+
+                        </div>
+
+                        <div class="col-12"><hr class="my-1"><strong class="text-danger">Información de compra y depreciación</strong></div>
+
+                        <div class="col-md-4">
+                            <label for="requisicion" class="form-label">Requisición de compra</label>
+                            <input type="text" id="requisicion" class="form-control" placeholder="REQ-0001">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="costoCompra" class="form-label">Costo del equipo</label>
+                            <div class="input-group"><span class="input-group-text">$</span><input type="number" id="costoCompra" class="form-control" min="0" step="0.01" placeholder="0.00"></div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="fechaCompra" class="form-label">Fecha de compra</label>
+                            <input type="date" id="fechaCompra" class="form-control">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="vidaUtil" class="form-label">Vida útil contable</label>
+                            <select id="vidaUtil" class="form-select"><option value="3">3 años</option><option value="4">4 años</option><option value="5" selected>5 años</option><option value="10">10 años</option></select>
+                        </div>
+
+                        <div class="col-md-8 d-flex align-items-end"><div class="alert alert-light border w-100 mb-0 py-2"><small>Se utilizará depreciación lineal: costo ÷ vida útil por cada año transcurrido.</small></div></div>
+
+                        <div class="col-12">
+
+                            <label for="observaciones" class="form-label">
+                                Observaciones
+                            </label>
+
+                            <textarea
+                                id="observaciones"
+                                class="form-control"
+                                rows="3"
+                            ></textarea>
+
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                >
+                    Cancelar
+                </button>
+
+                <button
+                    type="button"
+                    id="btnGuardarActivo"
+                    class="btn btn-primary"
+                >
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    Guardar activo
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
