@@ -1,13 +1,336 @@
-(function(global){"use strict";const $=id=>document.getElementById(id),uuid=()=>crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2),esc=v=>Auth.escape(v),normal=v=>String(v||"").toLowerCase();
-global.ServiceDesk={modal:null,actualId:"",timerActualizacion:null,storageHandler:null,esStaff(){return ["Administrador","Tecnico"].includes(Auth.usuario?.rol);},esAdmin(){return Auth.usuario?.rol==="Administrador";},tickets(){const todos=obtenerTickets();if(this.esAdmin())return todos;if(Auth.usuario?.rol==="Tecnico")return todos.filter(t=>t.asignado?.rol==="Tecnico"&&(!t.asignado.usuarioId||t.asignado.usuarioId===Auth.usuario.id));return todos.filter(t=>t.usuarioId===Auth.usuario.id||normal(t.solicitante.correo)===normal(Auth.usuario.correo));},
- iniciar(){this.modal=bootstrap.Modal.getOrCreateInstance($("modalNuevoTicket"));this.eventos();this.renderizar();clearInterval(this.timerActualizacion);this.timerActualizacion=setInterval(()=>this.sincronizar(),3000);if(!this.storageHandler){this.storageHandler=e=>{if(e.key==="ControlActivosTI")this.sincronizar(true);};window.addEventListener("storage",this.storageHandler);}},eventos(){$("btnNuevoTicket").onclick=()=>this.nuevo();$("formNuevoTicket").onsubmit=e=>this.crear(e);$("sdBuscar").oninput=()=>this.renderizar();$("sdFiltroEstado").onchange=()=>this.renderizar();$("sdListaTickets").onclick=e=>{const b=e.target.closest("button[data-id]");if(b)this.abrir(b.dataset.id);};$("sdFormRespuesta").onsubmit=e=>this.responder(e);$("sdRespuesta").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("sdFormRespuesta").requestSubmit();}};$("sdCambiarEstado").onchange=()=>this.cambiarEstado();$("sdAsignarA").onchange=()=>this.canalizar();},
- sincronizar(inmediato=false){if(!$("sdListaTickets")){clearInterval(this.timerActualizacion);this.timerActualizacion=null;return;}const borrador=$("sdRespuesta")?.value||"",seleccion=this.actualId;this.renderizar();if(seleccion&&this.tickets().some(t=>t.id===seleccion))this.abrir(seleccion);if($('sdRespuesta'))$("sdRespuesta").value=borrador;const estado=$("sdUltimaActualizacion");if(estado){estado.classList.remove("sd-refresh-pulse");void estado.offsetWidth;estado.classList.add("sd-refresh-pulse");estado.innerHTML=`<i class="fa-solid fa-circle-check"></i> ${inmediato?"Mensaje recibido":"Sincronizado"} ${new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}`;}},
- nuevo(){const u=Auth.usuario;$("formNuevoTicket").reset();$("sdNombre").value=u.nombre||"";$("sdCorreo").value=u.correo||u.login||"";$("sdArea").value=u.area||"";const correo=normal(u.correo||u.login),empleado=obtenerEmpleados().find(e=>normal(e.correo)===correo),activos=obtenerActivos().filter(a=>(empleado&&a.empleadoId===empleado.id)||normal(a.responsable)===normal(u.nombre));$("sdActivo").innerHTML='<option value="">Sin equipo relacionado</option>'+activos.map(a=>`<option value="${esc(a.id)}">${esc(a.activo)} · ${esc(a.categoria||"")} · ${esc(a.serie||"Sin serie")}</option>`).join("");this.modal.show();},
- crear(e){e.preventDefault();const activo=obtenerActivos().find(a=>a.id===$("sdActivo").value),ahora=new Date().toISOString(),lista=obtenerTickets(),ticket={id:uuid(),folio:`SD-${new Date().toISOString().slice(0,10).replaceAll("-","")}-${String(lista.length+1).padStart(4,"0")}`,usuarioId:Auth.usuario.id,solicitante:{nombre:$("sdNombre").value.trim(),correo:$("sdCorreo").value.trim().toLowerCase(),area:$("sdArea").value.trim()},activo:activo?{id:activo.id,activo:activo.activo,serie:activo.serie,categoria:activo.categoria,marca:activo.marca,modelo:activo.modelo,estado:activo.estado}:null,categoria:$("sdCategoria").value,prioridad:$("sdPrioridad").value,asunto:$("sdAsunto").value.trim(),asignado:{rol:"Administrador",usuarioId:"",nombre:"Mesa de administradores"},estado:"Abierto",creadoEn:ahora,actualizadoEn:ahora,mensajes:[{id:uuid(),autorId:Auth.usuario.id,autor:Auth.usuario.nombre,rol:Auth.usuario.rol,texto:$("sdDescripcion").value.trim(),fecha:ahora}]};lista.unshift(ticket);guardarTickets(lista);registrarMovimiento("ServiceDesk",`Se creó el ticket ${ticket.folio}: ${ticket.asunto}`);this.modal.hide();this.actualId=ticket.id;this.renderizar();this.abrir(ticket.id);Swal.fire({icon:"success",title:"Ticket enviado al administrador",text:ticket.folio,timer:1500,showConfirmButton:false});},
- filtrados(){const q=normal($("sdBuscar").value),estado=$("sdFiltroEstado").value;return this.tickets().filter(t=>(!estado||t.estado===estado)&&(!q||normal([t.folio,t.asunto,t.solicitante.nombre,t.activo?.activo].join(" ")).includes(q)));},
- renderizar(){const items=this.filtrados();$("sdListaTickets").innerHTML=items.map(t=>`<button class="sd-ticket ${t.id===this.actualId?"active":""}" data-id="${t.id}"><div class="sd-ticket-top"><strong>${esc(t.folio)}</strong><span class="sd-state ${normal(t.estado).replaceAll(" ","-")}">${esc(t.estado)}</span></div><p>${esc(t.asunto)}</p><small>${esc(t.solicitante.nombre)} · ${new Date(t.actualizadoEn).toLocaleString("es-MX")}</small></button>`).join("");$("sdSinTickets").hidden=items.length>0;const all=this.tickets();$("sdAbiertos").textContent=all.filter(t=>t.estado==="Abierto").length;$("sdAtencion").textContent=all.filter(t=>t.estado==="En atención").length;$("sdResueltos").textContent=all.filter(t=>t.estado==="Resuelto").length;$("sdTotal").textContent=all.length;},
- abrir(id){const t=this.tickets().find(x=>x.id===id);if(!t)return;this.actualId=id;this.renderizar();$("sdChatVacio").hidden=true;$("sdChat").hidden=false;$("sdChatFolio").textContent=`${t.folio} · ${t.categoria} · Prioridad ${t.prioridad}`;$("sdChatAsunto").textContent=t.asunto;$("sdChatSolicitante").textContent=`${t.solicitante.nombre} · ${t.solicitante.correo} · ${t.solicitante.area||"Sin área"}`;$("sdCambiarEstado").value=t.estado;$("sdCambiarEstado").disabled=!this.esStaff();const asignado=t.asignado||{rol:"Administrador",usuarioId:"",nombre:"Mesa de administradores"},tecnicos=Auth.usuarios().filter(u=>u.activo&&u.rol==="Tecnico");$("sdAsignarA").innerHTML='<option value="admin">Administrador</option>'+tecnicos.map(u=>`<option value="${esc(u.id)}">Técnico · ${esc(u.nombre)}</option>`).join("");$("sdAsignarA").value=asignado.rol==="Tecnico"?(asignado.usuarioId||""):"admin";$("sdAsignarA").disabled=!this.esAdmin();$("sdEquipoDetalle").innerHTML=(t.activo?`<i class="fa-solid fa-laptop me-2"></i><strong>${esc(t.activo.activo)}</strong> · ${esc(t.activo.categoria||"")} · Serie ${esc(t.activo.serie||"N/A")} · ${esc([t.activo.marca,t.activo.modelo].filter(Boolean).join(" "))} · Estado ${esc(t.activo.estado||"N/A")}`:'<i class="fa-solid fa-circle-info me-2"></i>Ticket sin equipo relacionado')+`<span class="sd-owner"><i class="fa-solid fa-user-check"></i> Responsable: ${esc(asignado.nombre)}</span>`;$("sdMensajes").innerHTML=t.mensajes.map(m=>`<article class="sd-message ${m.autorId===Auth.usuario.id?"mine":""}"><strong>${esc(m.autor)} <small>${esc(Auth.nombreRol(m.rol))}</small></strong><p>${esc(m.texto)}</p><small>${new Date(m.fecha).toLocaleString("es-MX")}</small></article>`).join("");$("sdFormRespuesta").hidden=["Cerrado"].includes(t.estado);$("sdMensajes").scrollTop=$("sdMensajes").scrollHeight;},
- responder(e){e.preventDefault();const texto=$("sdRespuesta").value.trim();if(!texto||!this.actualId)return;const lista=obtenerTickets(),i=lista.findIndex(t=>t.id===this.actualId);if(i<0)return;const ahora=new Date().toISOString();lista[i].mensajes.push({id:uuid(),autorId:Auth.usuario.id,autor:Auth.usuario.nombre,rol:Auth.usuario.rol,texto,fecha:ahora});lista[i].actualizadoEn=ahora;if(this.esStaff()&&lista[i].estado==="Abierto")lista[i].estado="En atención";guardarTickets(lista);$("sdRespuesta").value="";this.renderizar();this.abrir(this.actualId);},
- canalizar(){if(!this.esAdmin()||!this.actualId)return;const lista=obtenerTickets(),i=lista.findIndex(t=>t.id===this.actualId);if(i<0)return;const valor=$("sdAsignarA").value,tecnico=Auth.usuarios().find(u=>u.id===valor&&u.activo&&u.rol==="Tecnico"),ahora=new Date().toISOString(),asignado=tecnico?{rol:"Tecnico",usuarioId:tecnico.id,nombre:tecnico.nombre}:{rol:"Administrador",usuarioId:Auth.usuario.id,nombre:Auth.usuario.nombre};lista[i].asignado=asignado;lista[i].actualizadoEn=ahora;if(tecnico&&lista[i].estado==="Abierto")lista[i].estado="En atención";lista[i].mensajes.push({id:uuid(),autorId:Auth.usuario.id,autor:"Sistema ServiceDesk",rol:"Administrador",texto:tecnico?`El administrador canalizó el ticket al técnico ${tecnico.nombre}.`:"El administrador conservará la atención del ticket.",fecha:ahora});guardarTickets(lista);registrarMovimiento("ServiceDesk",`${lista[i].folio} asignado a ${asignado.nombre}`);this.renderizar();this.abrir(this.actualId);},
- cambiarEstado(){if(!this.esStaff()||!this.actualId)return;const lista=obtenerTickets(),i=lista.findIndex(t=>t.id===this.actualId);if(i<0)return;lista[i].estado=$("sdCambiarEstado").value;lista[i].actualizadoEn=new Date().toISOString();guardarTickets(lista);registrarMovimiento("ServiceDesk",`El ticket ${lista[i].folio} cambió a ${lista[i].estado}`);this.renderizar();this.abrir(this.actualId);}
-};})(window);
+(function (global) {
+    "use strict";
+
+    const $ = id => document.getElementById(id);
+    const esc = valor => Auth.escape(valor);
+    const normal = valor => String(valor || "").toLowerCase();
+    const client = () => global.ControlTISupabase.client;
+
+    function mapearMensaje(fila) {
+        return {
+            id: fila.id,
+            autorId: fila.author_id,
+            autor: fila.author_name,
+            rol: fila.author_role,
+            texto: fila.body,
+            fecha: fila.created_at
+        };
+    }
+
+    function mapearTicket(fila, mensajes) {
+        return {
+            id: fila.id,
+            folio: fila.folio,
+            usuarioId: fila.user_id,
+            solicitante: {
+                nombre: fila.requester_name,
+                correo: fila.requester_email,
+                area: fila.requester_area
+            },
+            activo: fila.asset,
+            categoria: fila.category,
+            prioridad: fila.priority,
+            asunto: fila.subject,
+            asignado: {
+                rol: fila.assigned_role,
+                usuarioId: fila.assigned_user_id || "",
+                nombre: fila.assigned_name
+            },
+            estado: fila.status,
+            creadoEn: fila.created_at,
+            actualizadoEn: fila.updated_at,
+            mensajes: mensajes.filter(mensaje => mensaje.ticket_id === fila.id).map(mapearMensaje)
+        };
+    }
+
+    global.ServiceDesk = {
+        modal: null,
+        actualId: "",
+        cache: [],
+        canalRealtime: null,
+        sincronizando: false,
+        timerRespaldo: null,
+
+        esStaff() {
+            return ["Administrador", "Tecnico"].includes(Auth.usuario?.rol);
+        },
+
+        esAdmin() {
+            return Auth.usuario?.rol === "Administrador";
+        },
+
+        tickets() {
+            return this.cache;
+        },
+
+        async iniciar() {
+            this.modal = bootstrap.Modal.getOrCreateInstance($("modalNuevoTicket"));
+            this.eventos();
+            this.conectarTiempoReal();
+            await this.sincronizar(false);
+            clearInterval(this.timerRespaldo);
+            this.timerRespaldo = setInterval(() => this.sincronizar(false), 30000);
+        },
+
+        eventos() {
+            $("btnNuevoTicket").onclick = () => this.nuevo();
+            $("formNuevoTicket").onsubmit = event => this.crear(event);
+            $("sdBuscar").oninput = () => this.renderizar();
+            $("sdFiltroEstado").onchange = () => this.renderizar();
+            $("sdListaTickets").onclick = event => {
+                const boton = event.target.closest("button[data-id]");
+                if (boton) this.abrir(boton.dataset.id);
+            };
+            $("sdFormRespuesta").onsubmit = event => this.responder(event);
+            $("sdRespuesta").onkeydown = event => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    $("sdFormRespuesta").requestSubmit();
+                }
+            };
+            $("sdCambiarEstado").onchange = () => this.cambiarEstado();
+            $("sdAsignarA").onchange = () => this.canalizar();
+        },
+
+        conectarTiempoReal() {
+            if (this.canalRealtime) return;
+            this.canalRealtime = client()
+                .channel(`controlti-servicedesk-${Auth.usuario.id}`)
+                .on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, () => this.sincronizar(true))
+                .on("postgres_changes", { event: "*", schema: "public", table: "ticket_messages" }, () => this.sincronizar(true))
+                .subscribe();
+        },
+
+        async cargarDatos() {
+            const { data: tickets, error: errorTickets } = await client()
+                .from("tickets")
+                .select("*")
+                .order("updated_at", { ascending: false });
+            if (errorTickets) throw errorTickets;
+
+            let mensajes = [];
+            if (tickets?.length) {
+                const { data, error } = await client()
+                    .from("ticket_messages")
+                    .select("*")
+                    .in("ticket_id", tickets.map(ticket => ticket.id))
+                    .order("created_at", { ascending: true });
+                if (error) throw error;
+                mensajes = data || [];
+            }
+
+            this.cache = (tickets || []).map(ticket => mapearTicket(ticket, mensajes));
+            global.ServiceDeskMini?.renderizar();
+        },
+
+        async sincronizar(inmediato = false) {
+            if (this.sincronizando) return;
+            this.sincronizando = true;
+            const borrador = $("sdRespuesta")?.value || "";
+            const seleccion = this.actualId;
+
+            try {
+                await this.cargarDatos();
+                if ($("sdListaTickets")) {
+                    this.renderizar();
+                    if (seleccion && this.cache.some(ticket => ticket.id === seleccion)) this.abrir(seleccion);
+                    if ($("sdRespuesta")) $("sdRespuesta").value = borrador;
+                    const estado = $("sdUltimaActualizacion");
+                    if (estado) {
+                        estado.classList.remove("sd-refresh-pulse");
+                        void estado.offsetWidth;
+                        estado.classList.add("sd-refresh-pulse");
+                        estado.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${inmediato ? "Actualización recibida" : "Sincronizado"} ${new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+                const estado = $("sdUltimaActualizacion");
+                if (estado) estado.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Sin conexión con ServiceDesk';
+            } finally {
+                this.sincronizando = false;
+            }
+        },
+
+        nuevo() {
+            const usuario = Auth.usuario;
+            $("formNuevoTicket").reset();
+            $("sdNombre").value = usuario.nombre || "";
+            $("sdCorreo").value = usuario.correo || "";
+            $("sdArea").value = usuario.area || "";
+            const correo = normal(usuario.correo);
+            const empleado = obtenerEmpleados().find(item => normal(item.correo) === correo);
+            const activos = obtenerActivos().filter(activo =>
+                (empleado && activo.empleadoId === empleado.id) || normal(activo.responsable) === normal(usuario.nombre)
+            );
+            $("sdActivo").innerHTML = '<option value="">Sin equipo relacionado</option>' + activos.map(activo =>
+                `<option value="${esc(activo.id)}">${esc(activo.activo)} · ${esc(activo.categoria || "")} · ${esc(activo.serie || "Sin serie")}</option>`
+            ).join("");
+            this.modal.show();
+        },
+
+        async crear(event) {
+            event.preventDefault();
+            const boton = event.currentTarget.querySelector("button[type='submit']");
+            boton.disabled = true;
+            const activo = obtenerActivos().find(item => item.id === $("sdActivo").value);
+            const asset = activo ? {
+                id: activo.id,
+                activo: activo.activo,
+                serie: activo.serie,
+                categoria: activo.categoria,
+                marca: activo.marca,
+                modelo: activo.modelo,
+                estado: activo.estado
+            } : null;
+
+            try {
+                const { data: ticket, error } = await client().from("tickets").insert({
+                    user_id: Auth.usuario.id,
+                    requester_name: $("sdNombre").value.trim(),
+                    requester_email: $("sdCorreo").value.trim().toLowerCase(),
+                    requester_area: $("sdArea").value.trim(),
+                    asset,
+                    category: $("sdCategoria").value,
+                    priority: $("sdPrioridad").value,
+                    subject: $("sdAsunto").value.trim(),
+                    assigned_role: "Administrador",
+                    assigned_user_id: null,
+                    assigned_name: "Mesa de administradores",
+                    status: "Abierto"
+                }).select().single();
+                if (error) throw error;
+
+                const { error: errorMensaje } = await client().from("ticket_messages").insert({
+                    ticket_id: ticket.id,
+                    author_id: Auth.usuario.id,
+                    author_name: Auth.usuario.nombre,
+                    author_role: Auth.usuario.rol,
+                    body: $("sdDescripcion").value.trim()
+                });
+                if (errorMensaje) throw errorMensaje;
+
+                this.modal.hide();
+                this.actualId = ticket.id;
+                await this.sincronizar(true);
+                this.abrir(ticket.id);
+                Swal.fire({ icon: "success", title: "Ticket enviado al administrador", text: ticket.folio, timer: 1800, showConfirmButton: false });
+            } catch (error) {
+                Swal.fire("No se pudo crear el ticket", error.message, "error");
+            } finally {
+                boton.disabled = false;
+            }
+        },
+
+        filtrados() {
+            if (!$("sdBuscar")) return this.cache;
+            const busqueda = normal($("sdBuscar").value);
+            const estado = $("sdFiltroEstado").value;
+            return this.cache.filter(ticket =>
+                (!estado || ticket.estado === estado) &&
+                (!busqueda || normal([ticket.folio, ticket.asunto, ticket.solicitante.nombre, ticket.activo?.activo].join(" ")).includes(busqueda))
+            );
+        },
+
+        renderizar() {
+            if (!$("sdListaTickets")) return;
+            const items = this.filtrados();
+            $("sdListaTickets").innerHTML = items.map(ticket => `<button class="sd-ticket ${ticket.id === this.actualId ? "active" : ""}" data-id="${ticket.id}"><div class="sd-ticket-top"><strong>${esc(ticket.folio)}</strong><span class="sd-state ${normal(ticket.estado).replaceAll(" ", "-")}">${esc(ticket.estado)}</span></div><p>${esc(ticket.asunto)}</p><small>${esc(ticket.solicitante.nombre)} · ${new Date(ticket.actualizadoEn).toLocaleString("es-MX")}</small></button>`).join("");
+            $("sdSinTickets").hidden = items.length > 0;
+            $("sdAbiertos").textContent = this.cache.filter(ticket => ticket.estado === "Abierto").length;
+            $("sdAtencion").textContent = this.cache.filter(ticket => ticket.estado === "En atención").length;
+            $("sdResueltos").textContent = this.cache.filter(ticket => ticket.estado === "Resuelto").length;
+            $("sdTotal").textContent = this.cache.length;
+        },
+
+        abrir(id) {
+            const ticket = this.cache.find(item => item.id === id);
+            if (!ticket || !$("sdChat")) return;
+            this.actualId = id;
+            this.renderizar();
+            $("sdChatVacio").hidden = true;
+            $("sdChat").hidden = false;
+            $("sdChatFolio").textContent = `${ticket.folio} · ${ticket.categoria} · Prioridad ${ticket.prioridad}`;
+            $("sdChatAsunto").textContent = ticket.asunto;
+            $("sdChatSolicitante").textContent = `${ticket.solicitante.nombre} · ${ticket.solicitante.correo} · ${ticket.solicitante.area || "Sin área"}`;
+            $("sdCambiarEstado").value = ticket.estado;
+            $("sdCambiarEstado").disabled = !this.esStaff();
+            const asignado = ticket.asignado;
+            const tecnicos = Auth.usuarios().filter(usuario => usuario.activo && usuario.rol === "Tecnico");
+            $("sdAsignarA").innerHTML = '<option value="admin">Administrador</option>' + tecnicos.map(usuario =>
+                `<option value="${esc(usuario.id)}">Técnico · ${esc(usuario.nombre)}</option>`
+            ).join("");
+            $("sdAsignarA").value = asignado.rol === "Tecnico" ? asignado.usuarioId : "admin";
+            $("sdAsignarA").disabled = !this.esAdmin();
+            $("sdEquipoDetalle").innerHTML = (ticket.activo
+                ? `<i class="fa-solid fa-laptop me-2"></i><strong>${esc(ticket.activo.activo)}</strong> · ${esc(ticket.activo.categoria || "")} · Serie ${esc(ticket.activo.serie || "N/A")} · ${esc([ticket.activo.marca, ticket.activo.modelo].filter(Boolean).join(" "))} · Estado ${esc(ticket.activo.estado || "N/A")}`
+                : '<i class="fa-solid fa-circle-info me-2"></i>Ticket sin equipo relacionado') +
+                `<span class="sd-owner"><i class="fa-solid fa-user-check"></i> Responsable: ${esc(asignado.nombre)}</span>`;
+            $("sdMensajes").innerHTML = ticket.mensajes.map(mensaje => `<article class="sd-message ${mensaje.autorId === Auth.usuario.id ? "mine" : ""}"><strong>${esc(mensaje.autor)} <small>${esc(Auth.nombreRol(mensaje.rol))}</small></strong><p>${esc(mensaje.texto)}</p><small>${new Date(mensaje.fecha).toLocaleString("es-MX")}</small></article>`).join("");
+            $("sdFormRespuesta").hidden = ticket.estado === "Cerrado";
+            $("sdMensajes").scrollTop = $("sdMensajes").scrollHeight;
+        },
+
+        async responder(event) {
+            event.preventDefault();
+            const texto = $("sdRespuesta").value.trim();
+            const ticket = this.cache.find(item => item.id === this.actualId);
+            if (!texto || !ticket) return;
+            $("sdRespuesta").value = "";
+
+            const { error } = await client().from("ticket_messages").insert({
+                ticket_id: ticket.id,
+                author_id: Auth.usuario.id,
+                author_name: Auth.usuario.nombre,
+                author_role: Auth.usuario.rol,
+                body: texto
+            });
+            if (error) {
+                $("sdRespuesta").value = texto;
+                return Swal.fire("No se pudo enviar", error.message, "error");
+            }
+
+            if (this.esStaff() && ticket.estado === "Abierto") {
+                await client().from("tickets").update({ status: "En atención" }).eq("id", ticket.id);
+            }
+            await this.sincronizar(true);
+        },
+
+        async canalizar() {
+            if (!this.esAdmin() || !this.actualId) return;
+            const valor = $("sdAsignarA").value;
+            const tecnico = Auth.usuarios().find(usuario => usuario.id === valor && usuario.activo && usuario.rol === "Tecnico");
+            const cambios = tecnico ? {
+                assigned_role: "Tecnico",
+                assigned_user_id: tecnico.id,
+                assigned_name: tecnico.nombre,
+                status: "En atención"
+            } : {
+                assigned_role: "Administrador",
+                assigned_user_id: Auth.usuario.id,
+                assigned_name: Auth.usuario.nombre
+            };
+
+            const { error } = await client().from("tickets").update(cambios).eq("id", this.actualId);
+            if (error) return Swal.fire("No se pudo canalizar", error.message, "error");
+
+            await client().from("ticket_messages").insert({
+                ticket_id: this.actualId,
+                author_id: Auth.usuario.id,
+                author_name: "Sistema ServiceDesk",
+                author_role: "Administrador",
+                body: tecnico ? `El administrador canalizó el ticket al técnico ${tecnico.nombre}.` : "El administrador conservará la atención del ticket."
+            });
+            await this.sincronizar(true);
+        },
+
+        async cambiarEstado() {
+            if (!this.esStaff() || !this.actualId) return;
+            const { error } = await client().from("tickets")
+                .update({ status: $("sdCambiarEstado").value })
+                .eq("id", this.actualId);
+            if (error) return Swal.fire("No se pudo cambiar el estado", error.message, "error");
+            await this.sincronizar(true);
+        }
+    };
+})(window);
