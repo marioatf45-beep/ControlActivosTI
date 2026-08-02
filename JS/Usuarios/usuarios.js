@@ -24,7 +24,9 @@
                 if (!boton) return;
                 const usuario = Auth.usuarios().find(item => item.id === boton.dataset.id);
                 if (!usuario) return;
-                boton.dataset.action === "edit" ? this.editar(usuario) : this.desactivar(usuario);
+                if (boton.dataset.action === "edit") this.editar(usuario);
+                else if (boton.dataset.action === "reset") this.restablecer(usuario);
+                else this.desactivar(usuario);
             };
         },
 
@@ -75,8 +77,26 @@
 
         renderizar() {
             const items = Auth.usuarios();
-            $("tablaUsuarios").innerHTML = items.map(usuario => `<tr><td><strong>${esc(usuario.login)}</strong></td><td>${esc(usuario.nombre)}</td><td><span class="user-role">${esc(Auth.nombreRol(usuario.rol))}</span></td><td><span class="user-state ${usuario.activo ? "active" : "inactive"}">${usuario.activo ? "Activo" : "Inactivo"}</span></td><td>${usuario.ultimoAcceso ? new Date(usuario.ultimoAcceso).toLocaleString("es-MX") : "Sin acceso"}</td><td class="text-end"><button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${usuario.id}" aria-label="Editar usuario ${esc(usuario.login)}"><i class="fa-solid fa-pen"></i></button>${usuario.id !== Auth.usuario.id ? `<button class="btn btn-sm btn-outline-danger ms-1" data-action="delete" data-id="${usuario.id}" aria-label="Desactivar usuario ${esc(usuario.login)}"><i class="fa-solid fa-user-slash"></i></button>` : ""}</td></tr>`).join("");
+            $("tablaUsuarios").innerHTML = items.map(usuario => `<tr><td><strong>${esc(usuario.login)}</strong></td><td>${esc(usuario.nombre)}</td><td><span class="user-role">${esc(Auth.nombreRol(usuario.rol))}</span></td><td><span class="user-state ${usuario.activo ? "active" : "inactive"}">${usuario.activo ? "Activo" : "Inactivo"}</span></td><td>${usuario.ultimoAcceso ? new Date(usuario.ultimoAcceso).toLocaleString("es-MX") : "Sin acceso"}</td><td class="text-end"><button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${usuario.id}" aria-label="Editar usuario ${esc(usuario.login)}" title="Editar usuario"><i class="fa-solid fa-pen"></i></button><button class="btn btn-sm btn-outline-primary ms-1" data-action="reset" data-id="${usuario.id}" aria-label="Restablecer contraseña de ${esc(usuario.login)}" title="Enviar restablecimiento de contraseña"><i class="fa-solid fa-key"></i></button>${usuario.id !== Auth.usuario.id ? `<button class="btn btn-sm btn-outline-danger ms-1" data-action="delete" data-id="${usuario.id}" aria-label="Desactivar usuario ${esc(usuario.login)}" title="Desactivar usuario"><i class="fa-solid fa-user-slash"></i></button>` : ""}</td></tr>`).join("");
             $("usuariosVacio").hidden = items.length > 0;
+        },
+
+        async restablecer(usuario) {
+            const confirmacion = await Swal.fire({
+                icon: "question",
+                title: "Restablecer contraseña",
+                html: `Se enviará un enlace seguro a <b>${esc(usuario.correo)}</b>.`,
+                showCancelButton: true,
+                confirmButtonText: "Enviar enlace",
+                cancelButtonText: "Cancelar",
+                confirmButtonColor: "#d7192d"
+            });
+            if (!confirmacion.isConfirmed) return;
+
+            const redirectTo = `${location.origin}${location.pathname}?version=5.2.0`;
+            const { error } = await client().auth.resetPasswordForEmail(usuario.correo, { redirectTo });
+            if (error) return Swal.fire("No se pudo enviar", error.message, "error");
+            Swal.fire("Enlace enviado", `El usuario debe revisar ${usuario.correo}.`, "success");
         },
 
         desactivar(usuario) {

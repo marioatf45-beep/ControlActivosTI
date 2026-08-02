@@ -81,6 +81,10 @@
             if (data?.session?.user) {
                 try {
                     await this.cargarUsuario(data.session.user);
+                    const esRecuperacion = location.hash.includes("type=recovery") || new URLSearchParams(location.search).get("type") === "recovery";
+                    if (esRecuperacion) {
+                        await this.mostrarPortal(true);
+                    }
                     return;
                 } catch (err) {
                     console.error(err);
@@ -111,7 +115,7 @@
                 .then(() => {});
         },
 
-        mostrarPortal() {
+        mostrarPortal(forzarCambio = false) {
             return new Promise(resolve => {
                 document.getElementById("portalAcceso")?.remove();
                 const portal = document.createElement("div");
@@ -129,6 +133,8 @@
                     otros.forEach(form => form.hidden = true);
                     actual.querySelector("input")?.focus();
                 };
+
+                if (forzarCambio) mostrar(cambio, login, registro);
 
                 portal.querySelector("#irRegistro").onclick = () => mostrar(registro, login, cambio);
                 portal.querySelector("#irAcceso").onclick = () => mostrar(login, registro, cambio);
@@ -240,6 +246,7 @@
                         .update({ password_changed_at: new Date().toISOString() })
                         .eq("id", this.usuario.id);
                     this.usuario.fechaCambioClave = new Date().toISOString();
+                    history.replaceState({}, document.title, `${location.pathname}${location.search ? "?version=5.2.0" : ""}`);
                     this.cerrarPortal(portal);
                     resolve();
                 };
