@@ -1,21 +1,309 @@
-(function(global){"use strict";
-const enc=new TextEncoder(),b64=b=>{let s="";new Uint8Array(b).forEach(x=>s+=String.fromCharCode(x));return btoa(s);},bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),uuid=()=>global.crypto?.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2),sesionKey="ControlTI_Sesion";
-async function derivar(clave,salt){return crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:150000,hash:"SHA-256"},await crypto.subtle.importKey("raw",enc.encode(clave),"PBKDF2",false,["deriveBits"]),256);}
-const permisos={Administrador:{modulos:"*",escritura:"*"},Tecnico:{modulos:["dashboard","inventario","empleados","asignaciones","gps","mantenimiento","reportes","servicedesk"],escritura:["mantenimiento","servicedesk"]},Inventario:{modulos:["dashboard","inventario","empleados","asignaciones","gps","mantenimiento","reportes","depreciacion","servicedesk"],escritura:["inventario","empleados","asignaciones","gps"]},SoloLectura:{modulos:["dashboard","inventario","empleados","asignaciones","gps","mantenimiento","reportes","depreciacion","servicedesk"],escritura:[]},ServiceDesk:{modulos:["servicedesk"],escritura:["servicedesk"]}};
-const administradorInicial={id:"admin-m-torres",nombre:"Mario Torres",nombres:"Mario",apellidos:"Torres",correo:"m.torres",area:"TecnologÃ­a de la informaciÃ³n",login:"m.torres",rol:"Administrador",activo:true,salt:"Flu4L80Nl0094GqJxwg28Q==",hash:"zrK1FFrUIxHNqEqzRz3DXlkRSqL9ZuYnS5Y48R9IwCk=",creadoEn:"1970-01-01T00:00:00.000Z",fechaCambioClave:"1970-01-01T00:00:00.000Z",ultimoAcceso:""};
-let registro;
-global.Auth={usuario:null,permisos,
- usuarios(){const db=obtenerBaseDatos();return Array.isArray(db.usuariosSistema)?db.usuariosSistema:[];},guardarUsuarios(lista){const db=obtenerBaseDatos();db.usuariosSistema=lista;guardarBaseDatos(db);},
- async crearHash(clave,saltNuevo){const salt=saltNuevo||crypto.getRandomValues(new Uint8Array(16)),material=await derivar(clave,salt),hash=b64(await crypto.subtle.digest("SHA-256",material));return{salt:b64(salt),hash};},async validarClave(usuario,clave){const dato=await this.crearHash(clave,bytes(usuario.salt));return dato.hash===usuario.hash;},claveCumple(clave){return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(String(clave));},claveExpirada(usuario){const base=usuario.fechaCambioClave||usuario.creadoEn;if(!base)return true;return Date.now()-new Date(base).getTime()>=30*24*60*60*1000;},
- asegurarAdministradorInicial(){const usuarios=this.usuarios();if(!usuarios.some(x=>x.rol==="Administrador")){const existente=usuarios.find(x=>String(x.login||"").toLowerCase()==="m.torres");if(existente)Object.assign(existente,administradorInicial,{id:existente.id||administradorInicial.id});else usuarios.push({...administradorInicial});this.guardarUsuarios(usuarios);}},
- async iniciar(){this.asegurarAdministradorInicial();const usuarios=this.usuarios(),id=sessionStorage.getItem(sesionKey),u=usuarios.find(x=>x.id===id&&x.activo);if(u&&!this.claveExpirada(u))this.establecerSesion(u);else{sessionStorage.removeItem(sesionKey);await this.mostrarPortal();}},
- mostrarPortal(){return new Promise(resolve=>{document.getElementById("portalAcceso")?.remove();const primerUsuario=this.usuarios().length===0,portal=document.createElement("div");portal.id="portalAcceso";portal.className="access-portal";portal.innerHTML=`<section class="access-brand"><img src="Assets/logo-dtroy-acceso.png" alt="D-Troy Logistics LLC"><div><span>CONTROL DE ACTIVOS TI</span><h1>Administración segura de equipos, unidades y servicios.</h1><p>Accede al portal corporativo para continuar.</p></div><small>© ${new Date().getFullYear()} D-Troy Logistics LLC</small></section><section class="access-panel"><div class="access-box"><div class="access-form-logo"><img src="Assets/logo-dtroy-acceso.png" alt="D-Troy Logistics LLC"></div><form id="formAcceso" class="access-form"><span class="access-kicker">PORTAL CORPORATIVO</span><h2>Bienvenido</h2><p>Ingresa tu usuario o correo y contraseña.</p><label>Usuario o correo<input id="accesoUsuario" autocomplete="username" required></label><label>Contraseña<div class="access-password"><input id="accesoClave" type="password" autocomplete="current-password" required><button type="button" data-ver="accesoClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div></label><div class="access-error" id="errorAcceso" hidden></div><button class="access-primary" type="submit">Iniciar sesión <i class="fa-solid fa-arrow-right"></i></button><button class="access-link" id="irRegistro" type="button">¿No tienes cuenta? Crear una nueva</button></form><form id="formRegistro" class="access-form" hidden><span class="access-kicker">NUEVA CUENTA</span><h2>${primerUsuario?"Crear administrador":"Crear una cuenta"}</h2><p>${primerUsuario?"Registra al administrador inicial del sistema.":"Tu cuenta iniciará con permisos de solo lectura."}</p><div class="access-grid"><label>Nombre<input id="registroNombre" autocomplete="given-name" required></label><label>Apellido<input id="registroApellido" autocomplete="family-name" required></label></div><label>Correo electrónico<input id="registroCorreo" type="email" autocomplete="email" required></label><label>Área o departamento<input id="registroArea" required></label><label>Nueva contraseña<div class="access-password"><input id="registroClave" type="password" minlength="8" autocomplete="new-password" required><button type="button" data-ver="registroClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div><small>Mínimo 8 caracteres.</small></label><label>Confirmar contraseña<input id="registroConfirmacion" type="password" minlength="8" autocomplete="new-password" required></label><div class="access-error" id="errorRegistro" hidden></div><button class="access-primary" type="submit">Crear cuenta <i class="fa-solid fa-user-plus"></i></button>${primerUsuario?"":'<button class="access-link" id="irAcceso" type="button">Ya tengo cuenta. Iniciar sesión</button>'}</form></div></section>`;document.body.appendChild(portal);document.body.classList.add("access-locked");
- registro=portal.querySelector("#formRegistro");registro.querySelector("label small").textContent="8 caracteres, mayúscula, minúscula, número y signo especial.";registro.insertAdjacentHTML("afterend",'<form id="formCambioClave" class="access-form" hidden><span class="access-kicker">SEGURIDAD DE ACCESO</span><h2>Actualiza tu contraseña</h2><p>Han transcurrido 30 días. Crea una contraseña nueva para continuar.</p><label>Nueva contraseña<div class="access-password"><input id="cambioClave" type="password" minlength="8" autocomplete="new-password" required><button type="button" data-ver="cambioClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div><small>8 caracteres, mayúscula, minúscula, número y signo especial.</small></label><label>Confirmar contraseña<input id="cambioConfirmacion" type="password" minlength="8" autocomplete="new-password" required></label><div class="access-error" id="errorCambioClave" hidden></div><button class="access-primary" type="submit">Actualizar y continuar <i class="fa-solid fa-shield-halved"></i></button></form>');
- const esPortalPublico=!['localhost','127.0.0.1'].includes(location.hostname);if(esPortalPublico){registro.querySelector("h2").textContent="Crear una cuenta";registro.querySelector("p").textContent="Tu cuenta tendrá acceso exclusivo al portal ServiceDesk.";}else if(!primerUsuario)registro.querySelector("p").textContent="Tu cuenta tendrá acceso exclusivo al portal ServiceDesk.";
- const login=portal.querySelector("#formAcceso"),cambio=portal.querySelector("#formCambioClave"),mostrar=(formA,...otros)=>{formA.hidden=false;otros.forEach(f=>f.hidden=true);formA.querySelector("input")?.focus();};let usuarioPendiente=null;if(primerUsuario)mostrar(registro,login,cambio);portal.querySelector("#irRegistro")?.addEventListener("click",()=>mostrar(registro,login,cambio));portal.querySelector("#irAcceso")?.addEventListener("click",()=>mostrar(login,registro,cambio));portal.querySelectorAll("button[data-ver]").forEach(b=>b.onclick=()=>{const i=portal.querySelector("#"+b.dataset.ver);i.type=i.type==="password"?"text":"password";b.querySelector("i").className=i.type==="password"?"fa-solid fa-eye":"fa-solid fa-eye-slash";});
- login.onsubmit=async e=>{e.preventDefault();const error=portal.querySelector("#errorAcceso"),dato=portal.querySelector("#accesoUsuario").value.trim().toLowerCase(),clave=portal.querySelector("#accesoClave").value,u=this.usuarios().find(x=>x.activo&&[x.login,x.correo].some(v=>String(v||"").toLowerCase()===dato));error.hidden=true;if(!u||!await this.validarClave(u,clave)){error.textContent="Usuario, correo o contraseña incorrectos.";error.hidden=false;return;}if(this.claveExpirada(u)){usuarioPendiente=u;mostrar(cambio,login,registro);return;}const lista=this.usuarios(),i=lista.findIndex(x=>x.id===u.id);lista[i].ultimoAcceso=new Date().toISOString();this.guardarUsuarios(lista);this.cerrarPortal(portal);this.establecerSesion(lista[i]);resolve();};
- registro.onsubmit=async e=>{e.preventDefault();const error=portal.querySelector("#errorRegistro"),nombre=portal.querySelector("#registroNombre").value.trim(),apellido=portal.querySelector("#registroApellido").value.trim(),correo=portal.querySelector("#registroCorreo").value.trim().toLowerCase(),area=portal.querySelector("#registroArea").value.trim(),clave=portal.querySelector("#registroClave").value,confirmacion=portal.querySelector("#registroConfirmacion").value;error.hidden=true;if(!this.claveCumple(clave)||clave!==confirmacion){error.textContent=clave!==confirmacion?"Las contraseñas no coinciden.":"Usa 8 caracteres con mayúscula, minúscula, número y signo especial.";error.hidden=false;return;}if(this.usuarios().some(x=>[x.login,x.correo].some(v=>String(v||"").toLowerCase()===correo))){error.textContent="Ya existe una cuenta con este correo.";error.hidden=false;return;}const h=await this.crearHash(clave),esPrimero=this.usuarios().length===0&&!esPortalPublico,ahora=new Date().toISOString(),u={id:uuid(),nombre:`${nombre} ${apellido}`,nombres:nombre,apellidos:apellido,correo,area,login:correo,rol:esPrimero?"Administrador":"ServiceDesk",activo:true,...h,creadoEn:ahora,fechaCambioClave:ahora,ultimoAcceso:ahora},lista=this.usuarios();lista.push(u);this.guardarUsuarios(lista);this.cerrarPortal(portal);this.establecerSesion(u);resolve();};
- cambio.onsubmit=async e=>{e.preventDefault();const error=portal.querySelector("#errorCambioClave"),clave=portal.querySelector("#cambioClave").value,confirmacion=portal.querySelector("#cambioConfirmacion").value;error.hidden=true;if(!usuarioPendiente){mostrar(login,registro,cambio);return;}if(!this.claveCumple(clave)||clave!==confirmacion){error.textContent=clave!==confirmacion?"Las contraseñas no coinciden.":"Usa 8 caracteres con mayúscula, minúscula, número y signo especial.";error.hidden=false;return;}if(await this.validarClave(usuarioPendiente,clave)){error.textContent="La nueva contraseña debe ser diferente a la anterior.";error.hidden=false;return;}const lista=this.usuarios(),i=lista.findIndex(x=>x.id===usuarioPendiente.id),h=await this.crearHash(clave),ahora=new Date().toISOString();lista[i]={...lista[i],...h,fechaCambioClave:ahora,ultimoAcceso:ahora};this.guardarUsuarios(lista);this.cerrarPortal(portal);this.establecerSesion(lista[i]);resolve();};});},
- cerrarPortal(portal){portal.classList.add("access-exit");document.body.classList.remove("access-locked");setTimeout(()=>portal.remove(),260);},
- establecerSesion(u){this.usuario=u;sessionStorage.setItem(sesionKey,u.id);const zona=document.querySelector(".user");if(zona){zona.innerHTML=`<i class="fa-solid fa-user-circle"></i><span><strong>${this.escape(u.nombre)}</strong><small class="d-block text-muted">${this.nombreRol(u.rol)}</small></span><button class="btn btn-sm btn-link text-danger" id="btnCerrarSesion" title="Cerrar sesión"><i class="fa-solid fa-right-from-bracket"></i></button>`;document.getElementById("btnCerrarSesion").onclick=()=>this.cerrarSesion();}this.aplicarMenu();},cerrarSesion(){sessionStorage.removeItem(sesionKey);location.reload();},nombreRol(r){return r==="Tecnico"?"Técnico":r==="SoloLectura"?"Solo lectura":r==="ServiceDesk"?"ServiceDesk":r;},puede(modulo,accion="leer"){if(!this.usuario)return false;const p=permisos[this.usuario.rol]||permisos.SoloLectura;return accion==="leer"?(p.modulos==="*"||p.modulos.includes(modulo)):(p.escritura==="*"||p.escritura.includes(modulo));},aplicarMenu(){document.querySelectorAll(".sidebar a[data-page]").forEach(a=>a.closest("li").hidden=!this.puede(a.dataset.page));},aplicarPagina(pagina){this.aplicarMenu();if(this.puede(pagina,"escribir"))return;const contenido=document.getElementById("contenidoPrincipal");if(!contenido)return;const mutaciones=["#btnNuevoActivo","#btnNuevoEmpleado","#btnNuevaAsignacion","#btnNuevoMantenimiento","#btnNuevaUnidad","#btnGuardarConfiguracion","#btnNuevoUsuario","button[title^='Editar']","button[title^='Eliminar']","button[title='Credenciales del celular']","button[data-action='edit']","button[data-action='delete']","button[data-action='close']"];contenido.querySelectorAll(mutaciones.join(",")).forEach(x=>x.remove());contenido.querySelectorAll("form input, form select, form textarea").forEach(x=>x.disabled=true);},requiereAdmin(){return this.usuario?.rol==="Administrador";},escape(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-};})(window);
+(function (global) {
+    "use strict";
+
+    const permisos = {
+        Administrador: { modulos: "*", escritura: "*" },
+        Tecnico: {
+            modulos: ["dashboard", "inventario", "empleados", "asignaciones", "gps", "mantenimiento", "reportes", "servicedesk"],
+            escritura: ["mantenimiento", "servicedesk"]
+        },
+        Inventario: {
+            modulos: ["dashboard", "inventario", "empleados", "asignaciones", "gps", "mantenimiento", "reportes", "depreciacion", "servicedesk"],
+            escritura: ["inventario", "empleados", "asignaciones", "gps"]
+        },
+        SoloLectura: {
+            modulos: ["dashboard", "inventario", "empleados", "asignaciones", "gps", "mantenimiento", "reportes", "depreciacion", "servicedesk"],
+            escritura: []
+        },
+        ServiceDesk: { modulos: ["servicedesk"], escritura: ["servicedesk"] }
+    };
+
+    const ADMIN_LOGIN = "m.torres";
+    const ADMIN_EMAIL = "mario.torres@dtroylogistics.com";
+    const client = () => global.ControlTISupabase?.client;
+    let registro;
+
+    function mapearPerfil(perfil) {
+        return {
+            id: perfil.id,
+            nombre: perfil.full_name || perfil.login || perfil.email,
+            nombres: perfil.full_name || "",
+            apellidos: "",
+            correo: perfil.email,
+            area: perfil.area || "",
+            login: perfil.login,
+            rol: perfil.role,
+            activo: perfil.active,
+            fechaCambioClave: perfil.password_changed_at,
+            creadoEn: perfil.created_at,
+            ultimoAcceso: perfil.last_access_at || ""
+        };
+    }
+
+    global.Auth = {
+        usuario: null,
+        permisos,
+        listaUsuarios: [],
+
+        usuarios() {
+            return this.listaUsuarios;
+        },
+
+        async refrescarUsuarios() {
+            if (!client() || !this.usuario) return [];
+            const { data, error } = await client()
+                .from("profiles")
+                .select("*")
+                .order("full_name", { ascending: true });
+            if (error) throw error;
+            this.listaUsuarios = (data || []).map(mapearPerfil);
+            return this.listaUsuarios;
+        },
+
+        claveCumple(clave) {
+            return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(String(clave));
+        },
+
+        claveExpirada(usuario) {
+            const base = usuario?.fechaCambioClave || usuario?.creadoEn;
+            if (!base) return false;
+            return Date.now() - new Date(base).getTime() >= 30 * 24 * 60 * 60 * 1000;
+        },
+
+        async iniciar() {
+            if (!client()) {
+                throw new Error("La conexión central de acceso no está disponible.");
+            }
+
+            const { data, error } = await client().auth.getSession();
+            if (error) console.error(error);
+
+            if (data?.session?.user) {
+                try {
+                    await this.cargarUsuario(data.session.user);
+                    return;
+                } catch (err) {
+                    console.error(err);
+                    await client().auth.signOut();
+                }
+            }
+
+            await this.mostrarPortal();
+        },
+
+        async cargarUsuario(user) {
+            const { data: perfil, error } = await client()
+                .from("profiles")
+                .select("*")
+                .eq("id", user.id)
+                .single();
+
+            if (error || !perfil) throw error || new Error("Perfil no encontrado.");
+            if (!perfil.active) throw new Error("La cuenta está desactivada.");
+
+            this.usuario = mapearPerfil(perfil);
+            await this.refrescarUsuarios();
+            this.establecerSesion(this.usuario);
+
+            client().from("profiles")
+                .update({ last_access_at: new Date().toISOString() })
+                .eq("id", user.id)
+                .then(() => {});
+        },
+
+        mostrarPortal() {
+            return new Promise(resolve => {
+                document.getElementById("portalAcceso")?.remove();
+                const portal = document.createElement("div");
+                portal.id = "portalAcceso";
+                portal.className = "access-portal";
+                portal.innerHTML = `<section class="access-brand"><img src="Assets/logo-dtroy-acceso.png" alt="D-Troy Logistics LLC"><div><span>CONTROL DE ACTIVOS TI</span><h1>Administración segura de equipos, unidades y servicios.</h1><p>Accede al portal corporativo para continuar.</p></div><small>© ${new Date().getFullYear()} D-Troy Logistics LLC</small></section><section class="access-panel"><div class="access-box"><div class="access-form-logo"><img src="Assets/logo-dtroy-acceso.png" alt="D-Troy Logistics LLC"></div><form id="formAcceso" class="access-form"><span class="access-kicker">PORTAL CORPORATIVO</span><h2>Bienvenido</h2><p>Ingresa tu usuario o correo y contraseña.</p><label>Usuario o correo<input id="accesoUsuario" autocomplete="username" required></label><label>Contraseña<div class="access-password"><input id="accesoClave" type="password" autocomplete="current-password" required><button type="button" data-ver="accesoClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div></label><div class="access-error" id="errorAcceso" hidden></div><button class="access-primary" type="submit">Iniciar sesión <i class="fa-solid fa-arrow-right"></i></button><button class="access-link" id="irRegistro" type="button">¿No tienes cuenta? Crear una nueva</button></form><form id="formRegistro" class="access-form" hidden><span class="access-kicker">NUEVA CUENTA</span><h2>Crear una cuenta</h2><p>Tu cuenta tendrá acceso inicial al portal ServiceDesk.</p><div class="access-grid"><label>Nombre<input id="registroNombre" autocomplete="given-name" required></label><label>Apellido<input id="registroApellido" autocomplete="family-name" required></label></div><label>Correo electrónico<input id="registroCorreo" type="email" autocomplete="email" required></label><label>Área o departamento<input id="registroArea" required></label><label>Nueva contraseña<div class="access-password"><input id="registroClave" type="password" minlength="8" autocomplete="new-password" required><button type="button" data-ver="registroClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div><small>8 caracteres, mayúscula, minúscula, número y signo especial.</small></label><label>Confirmar contraseña<input id="registroConfirmacion" type="password" minlength="8" autocomplete="new-password" required></label><div class="access-error" id="errorRegistro" hidden></div><button class="access-primary" type="submit">Crear cuenta <i class="fa-solid fa-user-plus"></i></button><button class="access-link" id="irAcceso" type="button">Ya tengo cuenta. Iniciar sesión</button></form><form id="formCambioClave" class="access-form" hidden><span class="access-kicker">SEGURIDAD DE ACCESO</span><h2>Actualiza tu contraseña</h2><p>Crea una contraseña nueva para continuar.</p><label>Nueva contraseña<div class="access-password"><input id="cambioClave" type="password" minlength="8" autocomplete="new-password" required><button type="button" data-ver="cambioClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div><small>8 caracteres, mayúscula, minúscula, número y signo especial.</small></label><label>Confirmar contraseña<input id="cambioConfirmacion" type="password" minlength="8" autocomplete="new-password" required></label><div class="access-error" id="errorCambioClave" hidden></div><button class="access-primary" type="submit">Actualizar y continuar <i class="fa-solid fa-shield-halved"></i></button></form></div></section>`;
+
+                document.body.appendChild(portal);
+                document.body.classList.add("access-locked");
+                registro = portal.querySelector("#formRegistro");
+                const login = portal.querySelector("#formAcceso");
+                const cambio = portal.querySelector("#formCambioClave");
+                const mostrar = (actual, ...otros) => {
+                    actual.hidden = false;
+                    otros.forEach(form => form.hidden = true);
+                    actual.querySelector("input")?.focus();
+                };
+
+                portal.querySelector("#irRegistro").onclick = () => mostrar(registro, login, cambio);
+                portal.querySelector("#irAcceso").onclick = () => mostrar(login, registro, cambio);
+                portal.querySelectorAll("button[data-ver]").forEach(boton => {
+                    boton.onclick = () => {
+                        const input = portal.querySelector("#" + boton.dataset.ver);
+                        input.type = input.type === "password" ? "text" : "password";
+                        boton.querySelector("i").className = input.type === "password" ? "fa-solid fa-eye" : "fa-solid fa-eye-slash";
+                    };
+                });
+
+                login.onsubmit = async event => {
+                    event.preventDefault();
+                    const errorNodo = portal.querySelector("#errorAcceso");
+                    const entrada = portal.querySelector("#accesoUsuario").value.trim().toLowerCase();
+                    const email = entrada === ADMIN_LOGIN ? ADMIN_EMAIL : entrada;
+                    const password = portal.querySelector("#accesoClave").value;
+                    errorNodo.hidden = true;
+
+                    if (!email.includes("@")) {
+                        errorNodo.textContent = "Utiliza tu correo completo para iniciar sesión.";
+                        errorNodo.hidden = false;
+                        return;
+                    }
+
+                    const { data, error } = await client().auth.signInWithPassword({ email, password });
+                    if (error || !data?.user) {
+                        errorNodo.textContent = "Usuario, correo o contraseña incorrectos.";
+                        errorNodo.hidden = false;
+                        return;
+                    }
+
+                    try {
+                        await this.cargarUsuario(data.user);
+                        if (this.claveExpirada(this.usuario)) {
+                            mostrar(cambio, login, registro);
+                            return;
+                        }
+                        this.cerrarPortal(portal);
+                        resolve();
+                    } catch (err) {
+                        await client().auth.signOut();
+                        errorNodo.textContent = err.message || "No fue posible cargar el perfil.";
+                        errorNodo.hidden = false;
+                    }
+                };
+
+                registro.onsubmit = async event => {
+                    event.preventDefault();
+                    const errorNodo = portal.querySelector("#errorRegistro");
+                    const nombres = portal.querySelector("#registroNombre").value.trim();
+                    const apellidos = portal.querySelector("#registroApellido").value.trim();
+                    const email = portal.querySelector("#registroCorreo").value.trim().toLowerCase();
+                    const area = portal.querySelector("#registroArea").value.trim();
+                    const password = portal.querySelector("#registroClave").value;
+                    const confirmacion = portal.querySelector("#registroConfirmacion").value;
+                    errorNodo.hidden = true;
+
+                    if (!this.claveCumple(password) || password !== confirmacion) {
+                        errorNodo.textContent = password !== confirmacion ? "Las contraseñas no coinciden." : "Usa 8 caracteres con mayúscula, minúscula, número y signo especial.";
+                        errorNodo.hidden = false;
+                        return;
+                    }
+
+                    const { data, error } = await client().auth.signUp({
+                        email,
+                        password,
+                        options: { data: { full_name: `${nombres} ${apellidos}`.trim(), area, login: email.split("@")[0] } }
+                    });
+
+                    if (error) {
+                        errorNodo.textContent = error.message;
+                        errorNodo.hidden = false;
+                        return;
+                    }
+
+                    if (!data?.session) {
+                        await Swal.fire("Confirma tu correo", "Revisa tu bandeja de entrada para activar la cuenta.", "info");
+                        mostrar(login, registro, cambio);
+                        return;
+                    }
+
+                    await this.cargarUsuario(data.user);
+                    this.cerrarPortal(portal);
+                    resolve();
+                };
+
+                cambio.onsubmit = async event => {
+                    event.preventDefault();
+                    const errorNodo = portal.querySelector("#errorCambioClave");
+                    const password = portal.querySelector("#cambioClave").value;
+                    const confirmacion = portal.querySelector("#cambioConfirmacion").value;
+                    errorNodo.hidden = true;
+
+                    if (!this.claveCumple(password) || password !== confirmacion) {
+                        errorNodo.textContent = password !== confirmacion ? "Las contraseñas no coinciden." : "Usa 8 caracteres con mayúscula, minúscula, número y signo especial.";
+                        errorNodo.hidden = false;
+                        return;
+                    }
+
+                    const { error } = await client().auth.updateUser({ password });
+                    if (error) {
+                        errorNodo.textContent = error.message;
+                        errorNodo.hidden = false;
+                        return;
+                    }
+
+                    await client().from("profiles")
+                        .update({ password_changed_at: new Date().toISOString() })
+                        .eq("id", this.usuario.id);
+                    this.usuario.fechaCambioClave = new Date().toISOString();
+                    this.cerrarPortal(portal);
+                    resolve();
+                };
+            });
+        },
+
+        cerrarPortal(portal) {
+            portal.classList.add("access-exit");
+            document.body.classList.remove("access-locked");
+            setTimeout(() => portal.remove(), 260);
+        },
+
+        establecerSesion(usuario) {
+            this.usuario = usuario;
+            const zona = document.querySelector(".user");
+            if (zona) {
+                zona.innerHTML = `<i class="fa-solid fa-user-circle"></i><span><strong>${this.escape(usuario.nombre)}</strong><small class="d-block text-muted">${this.nombreRol(usuario.rol)}</small></span><button class="btn btn-sm btn-link text-danger" id="btnCerrarSesion" title="Cerrar sesión"><i class="fa-solid fa-right-from-bracket"></i></button>`;
+                document.getElementById("btnCerrarSesion").onclick = () => this.cerrarSesion();
+            }
+            this.aplicarMenu();
+        },
+
+        async cerrarSesion() {
+            await client()?.auth.signOut();
+            this.usuario = null;
+            location.reload();
+        },
+
+        nombreRol(rol) {
+            return rol === "Tecnico" ? "Técnico" : rol === "SoloLectura" ? "Solo lectura" : rol;
+        },
+
+        puede(modulo, accion = "leer") {
+            if (!this.usuario) return false;
+            const permiso = permisos[this.usuario.rol] || permisos.SoloLectura;
+            return accion === "leer"
+                ? permiso.modulos === "*" || permiso.modulos.includes(modulo)
+                : permiso.escritura === "*" || permiso.escritura.includes(modulo);
+        },
+
+        aplicarMenu() {
+            document.querySelectorAll(".sidebar a[data-page]").forEach(enlace => {
+                enlace.closest("li").hidden = !this.puede(enlace.dataset.page);
+            });
+        },
+
+        aplicarPagina(pagina) {
+            this.aplicarMenu();
+            if (this.puede(pagina, "escribir")) return;
+            const contenido = document.getElementById("contenidoPrincipal");
+            if (!contenido) return;
+            const mutaciones = ["#btnNuevoActivo", "#btnNuevoEmpleado", "#btnNuevaAsignacion", "#btnNuevoMantenimiento", "#btnNuevaUnidad", "#btnGuardarConfiguracion", "#btnNuevoUsuario", "button[title^='Editar']", "button[title^='Eliminar']", "button[title='Credenciales del celular']", "button[data-action='edit']", "button[data-action='delete']", "button[data-action='close']"];
+            contenido.querySelectorAll(mutaciones.join(",")).forEach(elemento => elemento.remove());
+            contenido.querySelectorAll("form input, form select, form textarea").forEach(elemento => elemento.disabled = true);
+        },
+
+        requiereAdmin() {
+            return this.usuario?.rol === "Administrador";
+        },
+
+        escape(valor) {
+            return String(valor ?? "").replace(/[&<>"']/g, caracter => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+            })[caracter]);
+        }
+    };
+})(window);
