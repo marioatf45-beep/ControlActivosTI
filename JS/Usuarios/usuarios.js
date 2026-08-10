@@ -16,16 +16,22 @@
             );
 
             this.eventos();
+
             await Auth.refrescarUsuarios();
             this.renderizar();
         },
 
         eventos() {
             $("btnNuevoUsuario").onclick = () => this.nuevo();
-            $("formUsuarioSistema").onsubmit = event => this.guardar(event);
+
+            $("formUsuarioSistema").onsubmit = event =>
+                this.guardar(event);
 
             $("tablaUsuarios").onclick = event => {
-                const boton = event.target.closest("button[data-action]");
+                const boton = event.target.closest(
+                    "button[data-action]"
+                );
+
                 if (!boton) return;
 
                 const usuario = Auth.usuarios().find(
@@ -34,10 +40,9 @@
 
                 if (!usuario) return;
 
-                if (
-                    boton.dataset.action === "edit" ||
-                    boton.dataset.action === "reset"
-                ) {
+                if (boton.dataset.action === "edit") {
+                    this.editar(usuario);
+                } else if (boton.dataset.action === "reset") {
                     this.editar(usuario);
                 } else if (boton.dataset.action === "delete") {
                     this.desactivar(usuario);
@@ -49,7 +54,9 @@
             Swal.fire({
                 icon: "info",
                 title: "Alta centralizada",
-                text: "El usuario debe registrarse desde el portal. Después podrás asignarle aquí el rol correspondiente."
+                text:
+                    "El usuario debe registrarse desde el portal. " +
+                    "Después podrás asignarle aquí el rol correspondiente."
             });
         },
 
@@ -58,15 +65,19 @@
             $("usuarioSistemaNombre").value = usuario.nombre;
             $("usuarioSistemaLogin").value = usuario.login;
             $("usuarioSistemaRol").value = usuario.rol;
-            $("usuarioSistemaActivo").checked = usuario.activo;
 
-            // Vacía significa conservar la contraseña actual.
-            // El módulo completo ya está restringido por Auth.requiereAdmin().
             $("usuarioSistemaClave").value = "";
             $("usuarioSistemaClave").required = false;
+
+            // El módulo Usuarios ya está protegido con Auth.requiereAdmin().
+            // La Edge Function vuelve a validar que sea admin en el servidor.
             $("usuarioSistemaClave").disabled = false;
+
+            $("usuarioSistemaActivo").checked = usuario.activo;
+
             $("ayudaClaveUsuario").textContent =
-                "(opcional: escribe una contraseña nueva; déjala vacía para conservarla)";
+                "Opcional: escribe una contraseña nueva. " +
+                "Déjala vacía para conservar la actual.";
 
             this.modal.show();
         },
@@ -76,7 +87,10 @@
 
             const id = $("usuarioSistemaId").value;
             const nuevaClave = $("usuarioSistemaClave").value;
-            const anterior = Auth.usuarios().find(item => item.id === id);
+
+            const anterior = Auth.usuarios().find(
+                item => item.id === id
+            );
 
             if (!anterior) {
                 return Swal.fire(
@@ -108,88 +122,93 @@
                 if (!claveValida) {
                     return Swal.fire(
                         "Contraseña no válida",
-                        "Debe tener mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.",
+                        "Debe tener mínimo 8 caracteres, una mayúscula, " +
+                        "una minúscula, un número y un carácter especial.",
                         "warning"
                     );
                 }
             }
 
             const cambios = {
-                full_name: $("usuarioSistemaNombre").value.trim(),
-                login: $("usuarioSistemaLogin").value.trim().toLowerCase(),
-                role: $("usuarioSistemaRol").value,
-                active: $("usuarioSistemaActivo").checked
+                full_name:
+                    $("usuarioSistemaNombre").value.trim(),
+
+                login:
+                    $("usuarioSistemaLogin")
+                        .value
+                        .trim()
+                        .toLowerCase(),
+
+                role:
+                    $("usuarioSistemaRol").value,
+
+                active:
+                    $("usuarioSistemaActivo").checked
             };
 
-            try {
-                const { error } = await client()
-                    .from("profiles")
-                    .update(cambios)
-                    .eq("id", id);
+            const { error } = await client()
+                .from("profiles")
+                .update(cambios)
+                .eq("id", id);
 
-                if (error) {
+            if (error) {
+                return Swal.fire(
+                    "No se pudo guardar",
+                    error.message,
+                    "error"
+                );
+            }
+
+            if (nuevaClave) {
+                const {
+                    data,
+                    error: errorClave
+                } = await client().functions.invoke(
+                    "admin-update-password",
+                    {
+                        body: {
+                            userId: id,
+                            password: nuevaClave
+                        }
+                    }
+                );
+
+                if (errorClave) {
+                    console.error(
+                        "admin-update-password:",
+                        errorClave
+                    );
+
                     return Swal.fire(
-                        "No se pudo guardar",
-                        error.message,
+                        "No se pudo cambiar la contraseña",
+                        errorClave.message,
                         "error"
                     );
                 }
 
-                if (nuevaClave) {
-                    const { data, error: errorClave } =
-                        await client().functions.invoke(
-                            "admin-update-password",
-                            {
-                                body: {
-                                    userId: id,
-                                    password: nuevaClave
-                                }
-                            }
-                        );
-
-                    if (errorClave) {
-                        console.error(
-                            "Error admin-update-password:",
-                            errorClave
-                        );
-
-                        return Swal.fire(
-                            "No se pudo cambiar la contraseña",
-                            errorClave.message,
-                            "error"
-                        );
-                    }
-
-                    if (!data || data.success !== true) {
-                        return Swal.fire(
-                            "No se pudo cambiar la contraseña",
-                            data?.error || "La función no confirmó el cambio.",
-                            "error"
-                        );
-                    }
+                if (!data || data.success !== true) {
+                    return Swal.fire(
+                        "No se pudo cambiar la contraseña",
+                        data?.error ||
+                            "La función no confirmó el cambio.",
+                        "error"
+                    );
                 }
-
-                await Auth.refrescarUsuarios();
-                this.modal.hide();
-                this.renderizar();
-
-                Swal.fire({
-                    icon: "success",
-                    title: nuevaClave
-                        ? "Usuario y contraseña actualizados"
-                        : "Usuario actualizado",
-                    timer: 1700,
-                    showConfirmButton: false
-                });
-            } catch (error) {
-                console.error("Error al actualizar el usuario:", error);
-
-                Swal.fire(
-                    "No se pudo guardar",
-                    error.message || "Ocurrió un error inesperado.",
-                    "error"
-                );
             }
+
+            await Auth.refrescarUsuarios();
+
+            this.modal.hide();
+            this.renderizar();
+
+            Swal.fire({
+                icon: "success",
+                title: nuevaClave
+                    ? "Usuario y contraseña actualizados"
+                    : "Usuario actualizado",
+                timer: 1700,
+                showConfirmButton: false
+            });
         },
 
         renderizar() {
@@ -197,41 +216,71 @@
 
             $("tablaUsuarios").innerHTML = items.map(usuario => `
                 <tr>
-                    <td><strong>${esc(usuario.login)}</strong></td>
-                    <td>${esc(usuario.nombre)}</td>
-                    <td><span class="user-role">${esc(Auth.nombreRol(usuario.rol))}</span></td>
                     <td>
-                        <span class="user-state ${usuario.activo ? "active" : "inactive"}">
+                        <strong>${esc(usuario.login)}</strong>
+                    </td>
+
+                    <td>
+                        ${esc(usuario.nombre)}
+                    </td>
+
+                    <td>
+                        <span class="user-role">
+                            ${esc(Auth.nombreRol(usuario.rol))}
+                        </span>
+                    </td>
+
+                    <td>
+                        <span class="user-state ${
+                            usuario.activo ? "active" : "inactive"
+                        }">
                             ${usuario.activo ? "Activo" : "Inactivo"}
                         </span>
                     </td>
-                    <td>${usuario.ultimoAcceso
-                        ? new Date(usuario.ultimoAcceso).toLocaleString("es-MX")
-                        : "Sin acceso"}</td>
+
+                    <td>
+                        ${
+                            usuario.ultimoAcceso
+                                ? new Date(
+                                    usuario.ultimoAcceso
+                                ).toLocaleString("es-MX")
+                                : "Sin acceso"
+                        }
+                    </td>
+
                     <td class="text-end">
-                        <button class="btn btn-sm btn-outline-secondary"
+                        <button
+                            class="btn btn-sm btn-outline-secondary"
                             data-action="edit"
                             data-id="${usuario.id}"
                             aria-label="Editar usuario ${esc(usuario.login)}"
                             title="Editar usuario">
                             <i class="fa-solid fa-pen"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-primary ms-1"
+
+                        <button
+                            class="btn btn-sm btn-outline-primary ms-1"
                             data-action="reset"
                             data-id="${usuario.id}"
                             aria-label="Cambiar contraseña de ${esc(usuario.login)}"
                             title="Cambiar contraseña">
                             <i class="fa-solid fa-key"></i>
                         </button>
-                        ${usuario.id !== Auth.usuario.id ? `
-                            <button class="btn btn-sm btn-outline-danger ms-1"
-                                data-action="delete"
-                                data-id="${usuario.id}"
-                                aria-label="Desactivar usuario ${esc(usuario.login)}"
-                                title="Desactivar usuario">
-                                <i class="fa-solid fa-user-slash"></i>
-                            </button>
-                        ` : ""}
+
+                        ${
+                            usuario.id !== Auth.usuario.id
+                                ? `
+                                    <button
+                                        class="btn btn-sm btn-outline-danger ms-1"
+                                        data-action="delete"
+                                        data-id="${usuario.id}"
+                                        aria-label="Desactivar usuario ${esc(usuario.login)}"
+                                        title="Desactivar usuario">
+                                        <i class="fa-solid fa-user-slash"></i>
+                                    </button>
+                                `
+                                : ""
+                        }
                     </td>
                 </tr>
             `).join("");
@@ -243,6 +292,9 @@
             Swal.fire({
                 icon: "warning",
                 title: `¿Desactivar ${usuario.login}?`,
+                text:
+                    "El usuario quedará inactivo y ya no deberá " +
+                    "tener acceso al portal.",
                 showCancelButton: true,
                 confirmButtonText: "Desactivar",
                 cancelButtonText: "Cancelar",
@@ -265,6 +317,13 @@
 
                 await Auth.refrescarUsuarios();
                 this.renderizar();
+
+                Swal.fire({
+                    icon: "success",
+                    title: "Usuario desactivado",
+                    timer: 1500,
+                    showConfirmButton: false
+                });
             });
         }
     };
