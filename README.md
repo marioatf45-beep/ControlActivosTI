@@ -6,7 +6,7 @@ Portal de GitHub Pages con autenticación, perfiles y ServiceDesk centralizados 
 
 Requisitos: Node.js 20+, Supabase CLI mediante `npx supabase` y acceso administrativo al proyecto `jxknzmeqanrgxuqzbzut`.
 
-1. Ejecutar en orden `supabase/01_auth_profiles.sql`, `supabase/02_servicedesk.sql` y `supabase/03_auth_hardening.sql` desde Supabase SQL Editor. Los scripts son idempotentes; realizar un respaldo previo.
+1. Ejecutar en orden `supabase/01_auth_profiles.sql`, `supabase/02_servicedesk.sql`, `supabase/03_auth_hardening.sql` y `supabase/04_service_role_profile_fix.sql` desde Supabase SQL Editor. Los scripts son idempotentes; realizar un respaldo previo.
 2. Generar un valor aleatorio de al menos 32 bytes y configurar secretos sin guardarlos en Git:
 
 ```powershell
