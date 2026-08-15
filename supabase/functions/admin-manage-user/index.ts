@@ -4,7 +4,7 @@ import { publishableKey, secretKey } from "../_shared/supabase-keys.ts";
 
 const ROLES = new Set(["Administrador", "Tecnico", "Inventario", "SoloLectura", "ServiceDesk"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,72}$/;
+const PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,72}$/;
 
 Deno.serve(async (request) => {
   const cors = corsHeaders(request);

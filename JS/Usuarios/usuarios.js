@@ -121,7 +121,7 @@
 
             if (nuevaClave) {
                 const claveValida =
-                    nuevaClave.length >= 8 &&
+                    nuevaClave.length >= 12 &&
                     /[A-Z]/.test(nuevaClave) &&
                     /[a-z]/.test(nuevaClave) &&
                     /[0-9]/.test(nuevaClave) &&
@@ -130,7 +130,7 @@
                 if (!claveValida) {
                     return Swal.fire(
                         "Contraseña no válida",
-                        "Debe tener mínimo 8 caracteres, una mayúscula, " +
+                        "Debe tener mínimo 12 caracteres, una mayúscula, " +
                         "una minúscula, un número y un carácter especial.",
                         "warning"
                     );
