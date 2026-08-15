@@ -99,10 +99,10 @@ async function cargarSistemaCentral() {
     const cliente = window.ControlTISupabase?.client;
     if (!cliente || !window.Auth?.usuario || window.Auth.usuario.rol === "ServiceDesk") return;
     const local = obtenerBaseDatos();
-    const { data, error } = await cliente.from("controlti_system_state").select("data").eq("singleton", true).maybeSingle();
+    const { data, error } = await cliente.rpc("controlti_get_system_state");
     if (error) throw error;
-    if (data?.data) {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data.data));
+    if (data) {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         localStorage.removeItem(STORAGE_KEY);
         return;
     }
