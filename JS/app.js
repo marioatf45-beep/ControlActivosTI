@@ -119,7 +119,8 @@ async function cargarPagina(pagina) {
 
     try {
 
-        const respuesta = await fetch(`Views/${pagina}.html`);
+        const versionVista = pagina === "entradas-salidas" ? "?v=1.1.0" : "";
+        const respuesta = await fetch(`Views/${pagina}.html${versionVista}`);
 
         if (!respuesta.ok) {
             throw new Error("No se pudo cargar la página.");

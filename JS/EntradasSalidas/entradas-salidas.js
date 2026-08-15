@@ -13,6 +13,7 @@
     global.EntradasSalidas = {
         eventos: [],
         estados: [],
+        activos: [],
         procesando: false,
 
         async iniciar() {
@@ -53,6 +54,7 @@
                 }));
                 const { error } = await client().rpc("controlti_sync_gate_assets", { p_assets: rows });
                 if (error) throw error;
+                if (notificar) await this.cargar();
                 if (notificar) Swal.fire({ icon: "success", title: "Equipos sincronizados", text: `${rows.length} equipos disponibles para escaneo.`, timer: 1800, showConfirmButton: false });
             } catch (error) {
                 console.error(error);
@@ -63,13 +65,19 @@
         },
 
         async cargar() {
-            const [{ data: events, error: eventError }, { data: states, error: stateError }] = await Promise.all([
+            const [
+                { data: events, error: eventError },
+                { data: states, error: stateError },
+                { data: assets, error: assetError }
+            ] = await Promise.all([
                 client().from("controlti_gate_events").select("*").order("occurred_at", { ascending: false }).limit(250),
-                client().from("controlti_gate_state").select("asset_id,location")
+                client().from("controlti_gate_state").select("asset_id,location,last_event_at,updated_at"),
+                client().from("controlti_gate_assets").select("id,asset_number,serial_number,brand,model,assigned_to").eq("active", true)
             ]);
-            if (eventError || stateError) throw eventError || stateError;
+            if (eventError || stateError || assetError) throw eventError || stateError || assetError;
             this.eventos = events || [];
             this.estados = states || [];
+            this.activos = assets || [];
             this.renderizar();
         },
 
@@ -124,7 +132,23 @@
             $("equiposDentro").textContent = Math.max(0, this.estados.length - outside);
             const today = new Date().toLocaleDateString("en-CA");
             $("movimientosHoy").textContent = this.eventos.filter(event => new Date(event.occurred_at).toLocaleDateString("en-CA") === today).length;
+            this.renderizarEquiposDentro();
             this.renderizarHistorial();
+        },
+
+        renderizarEquiposDentro() {
+            const assetsById = new Map(this.activos.map(asset => [asset.id, asset]));
+            const rows = this.estados
+                .filter(state => state.location === "DENTRO")
+                .map(state => ({ state, asset: assetsById.get(state.asset_id) }))
+                .filter(row => row.asset)
+                .sort((a, b) => String(a.asset.asset_number).localeCompare(String(b.asset.asset_number), "es", { numeric: true }));
+
+            $("equiposDentroDetalle").innerHTML = rows.map(({ state, asset }) => {
+                const lastEvent = state.last_event_at || state.updated_at;
+                return `<tr><td><strong>${escape(asset.asset_number)}</strong><small class="d-block text-muted">Serie: ${escape(asset.serial_number || "Sin serie")}</small></td><td>${escape([asset.brand, asset.model].filter(Boolean).join(" ") || "Sin descripción")}</td><td>${escape(asset.assigned_to || "Sin asignar")}</td><td>${lastEvent ? escape(dateTime(lastEvent)) : "Sin movimientos"}</td></tr>`;
+            }).join("");
+            $("equiposDentroVacio").hidden = rows.length > 0;
         },
 
         renderizarHistorial() {

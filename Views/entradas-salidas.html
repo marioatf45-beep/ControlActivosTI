@@ -37,6 +37,18 @@
                 <div class="col-sm-4"><div class="gate-kpi gate-kpi-out"><span>Fuera</span><strong id="equiposFuera">0</strong></div></div>
                 <div class="col-sm-4"><div class="gate-kpi"><span>Movimientos hoy</span><strong id="movimientosHoy">0</strong></div></div>
             </div>
+            <section class="card shadow-sm mb-4 gate-inside-card">
+                <div class="card-header bg-white py-3">
+                    <strong><i class="fa-solid fa-building-circle-check me-2"></i>Equipos dentro</strong>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead><tr><th>Activo</th><th>Equipo</th><th>Responsable</th><th>Último registro</th></tr></thead>
+                        <tbody id="equiposDentroDetalle"></tbody>
+                    </table>
+                </div>
+                <div id="equiposDentroVacio" class="text-center text-muted p-4" hidden>No hay equipos dentro.</div>
+            </section>
             <section class="card shadow-sm">
                 <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
                     <strong>Historial reciente</strong>
