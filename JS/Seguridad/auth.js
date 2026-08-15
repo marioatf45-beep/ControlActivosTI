@@ -294,6 +294,7 @@
         async cerrarSesion() {
             await client()?.auth.signOut();
             this.usuario = null;
+            sessionStorage.clear();
             location.reload();
         },
 

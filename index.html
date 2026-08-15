@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://code.jquery.com https://cdn.datatables.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://cdnjs.cloudflare.com https://unpkg.com; img-src 'self' data: blob: https://unpkg.com https://*.tile.openstreetmap.org; font-src 'self' data: https://cdnjs.cloudflare.com; connect-src 'self' https://jxknzmeqanrgxuqzbzut.supabase.co wss://jxknzmeqanrgxuqzbzut.supabase.co; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
 
     <title>Control de Activos TI</title>
 
@@ -289,22 +291,22 @@
 
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
 
 <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script>
 
-<script src="JS/storage.js?v=6.0.0"></script>
-<script src="JS/Seguridad/supabase.js?v=5.0.0"></script>
-<script src="JS/Seguridad/auth.js?v=5.3.0"></script>
+<script src="JS/storage.js?v=7.0.0"></script>
+<script src="JS/Seguridad/supabase.js?v=7.0.0"></script>
+<script src="JS/Seguridad/auth.js?v=7.0.0"></script>
 <script src="JS/dashboard.js?v=3.3.0"></script>
 <script src="JS/Seguridad/crypto.js?v=3.0.0"></script>
 <script src="JS/Inventario/crud.js?v=3.0.0"></script>

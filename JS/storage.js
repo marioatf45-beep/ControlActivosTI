@@ -12,7 +12,13 @@ const STORAGE_KEY = "ControlActivosTI";
 
 function inicializarSistema() {
 
-    if (localStorage.getItem(STORAGE_KEY)) {
+    if (sessionStorage.getItem(STORAGE_KEY)) {
+        return;
+    }
+
+    const legado = localStorage.getItem(STORAGE_KEY);
+    if (legado) {
+        sessionStorage.setItem(STORAGE_KEY, legado);
         return;
     }
 
@@ -58,7 +64,7 @@ function inicializarSistema() {
 
 function obtenerBaseDatos() {
 
-    const data = localStorage.getItem(STORAGE_KEY);
+    const data = sessionStorage.getItem(STORAGE_KEY);
 
     return data ? JSON.parse(data) : null;
 
@@ -70,7 +76,7 @@ function obtenerBaseDatos() {
 
 function guardarBaseDatos(database) {
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(database));
 
     sincronizarSistemaCentral(database);
 
@@ -96,7 +102,8 @@ async function cargarSistemaCentral() {
     const { data, error } = await cliente.from("controlti_system_state").select("data").eq("singleton", true).maybeSingle();
     if (error) throw error;
     if (data?.data) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data.data));
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data.data));
+        localStorage.removeItem(STORAGE_KEY);
         return;
     }
     if (local && ["Administrador", "Inventario"].includes(window.Auth.usuario.rol)) {
@@ -108,9 +115,10 @@ async function cargarSistemaCentral() {
                 actualizadoEn: new Date().toISOString()
             }))
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(inicial));
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(inicial));
         const { error: saveError } = await cliente.rpc("controlti_save_system_state", { p_data: inicial });
         if (saveError) throw saveError;
+        localStorage.removeItem(STORAGE_KEY);
     }
 }
 
@@ -120,6 +128,7 @@ async function cargarSistemaCentral() {
 
 function reiniciarSistema() {
 
+    sessionStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(STORAGE_KEY);
 
     inicializarSistema();
