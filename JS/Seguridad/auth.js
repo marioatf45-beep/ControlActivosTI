@@ -18,8 +18,6 @@
         ServiceDesk: { modulos: ["servicedesk"], escritura: ["servicedesk"] }
     };
 
-    const ADMIN_LOGIN = "m.torres";
-    const ADMIN_EMAIL = "mario.torres@dtroylogistics.com";
     const client = () => global.ControlTISupabase?.client;
     let registro;
 
@@ -51,6 +49,10 @@
 
         async refrescarUsuarios() {
             if (!client() || !this.usuario) return [];
+            if (!this.requiereAdmin()) {
+                this.listaUsuarios = [this.usuario];
+                return this.listaUsuarios;
+            }
             const { data, error } = await client()
                 .from("profiles")
                 .select("*")
@@ -149,26 +151,46 @@
                 login.onsubmit = async event => {
                     event.preventDefault();
                     const errorNodo = portal.querySelector("#errorAcceso");
-                    const entrada = portal.querySelector("#accesoUsuario").value.trim().toLowerCase();
-                    const email = entrada === ADMIN_LOGIN ? ADMIN_EMAIL : entrada;
+                    const identifier = portal.querySelector("#accesoUsuario").value.trim().toLowerCase();
                     const password = portal.querySelector("#accesoClave").value;
                     errorNodo.hidden = true;
 
-                    if (!email.includes("@")) {
-                        errorNodo.textContent = "Utiliza tu correo completo para iniciar sesión.";
+                    const boton = login.querySelector("button[type='submit']");
+                    boton.disabled = true;
+                    let data;
+                    let error;
+                    try {
+                        ({ data, error } = await client().functions.invoke("login-with-identifier", {
+                            body: { identifier, password }
+                        }));
+                    } catch (err) {
+                        error = err;
+                    } finally {
+                        boton.disabled = false;
+                    }
+
+                    if (error || !data?.session?.access_token || !data?.session?.refresh_token) {
+                        let message = data?.message || "Usuario, correo o contraseña incorrectos.";
+                        if (error?.context?.json) {
+                            try { message = (await error.context.json())?.message || message; } catch (_) {}
+                        }
+                        errorNodo.textContent = message;
                         errorNodo.hidden = false;
                         return;
                     }
 
-                    const { data, error } = await client().auth.signInWithPassword({ email, password });
-                    if (error || !data?.user) {
-                        errorNodo.textContent = "Usuario, correo o contraseña incorrectos.";
+                    const { data: sessionData, error: sessionError } = await client().auth.setSession({
+                        access_token: data.session.access_token,
+                        refresh_token: data.session.refresh_token
+                    });
+                    if (sessionError || !sessionData?.user) {
+                        errorNodo.textContent = "No fue posible establecer la sesión.";
                         errorNodo.hidden = false;
                         return;
                     }
 
                     try {
-                        await this.cargarUsuario(data.user);
+                        await this.cargarUsuario(sessionData.user);
                         if (this.claveExpirada(this.usuario)) {
                             mostrar(cambio, login, registro);
                             return;

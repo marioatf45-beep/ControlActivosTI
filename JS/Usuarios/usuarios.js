@@ -5,6 +5,14 @@
     const esc = valor => global.Auth.escape(valor);
     const client = () => global.ControlTISupabase.client;
 
+    async function mensajeFuncion(error, data, fallback) {
+        if (data?.message) return data.message;
+        if (error?.context?.json) {
+            try { return (await error.context.json())?.message || fallback; } catch (_) {}
+        }
+        return fallback;
+    }
+
     global.UsuariosSistema = {
         modal: null,
 
@@ -129,71 +137,20 @@
                 }
             }
 
-            const cambios = {
-                full_name:
-                    $("usuarioSistemaNombre").value.trim(),
-
-                login:
-                    $("usuarioSistemaLogin")
-                        .value
-                        .trim()
-                        .toLowerCase(),
-
-                role:
-                    $("usuarioSistemaRol").value,
-
-                active:
-                    $("usuarioSistemaActivo").checked
-            };
-
-            const { error } = await client()
-                .from("profiles")
-                .update(cambios)
-                .eq("id", id);
-
-            if (error) {
-                return Swal.fire(
-                    "No se pudo guardar",
-                    error.message,
-                    "error"
-                );
-            }
-
-            if (nuevaClave) {
-                const {
-                    data,
-                    error: errorClave
-                } = await client().functions.invoke(
-                    "admin-update-password",
-                    {
-                        body: {
-                            userId: id,
-                            password: nuevaClave
-                        }
-                    }
-                );
-
-                if (errorClave) {
-                    console.error(
-                        "admin-update-password:",
-                        errorClave
-                    );
-
-                    return Swal.fire(
-                        "No se pudo cambiar la contraseña",
-                        errorClave.message,
-                        "error"
-                    );
+            const { data, error } = await client().functions.invoke("admin-manage-user", {
+                body: {
+                    userId: id,
+                    fullName: $("usuarioSistemaNombre").value.trim(),
+                    login: $("usuarioSistemaLogin").value.trim().toLowerCase(),
+                    role: $("usuarioSistemaRol").value,
+                    active: $("usuarioSistemaActivo").checked,
+                    password: nuevaClave || undefined
                 }
+            });
 
-                if (!data || data.success !== true) {
-                    return Swal.fire(
-                        "No se pudo cambiar la contraseña",
-                        data?.error ||
-                            "La función no confirmó el cambio.",
-                        "error"
-                    );
-                }
+            if (error || data?.success !== true) {
+                console.error("admin-manage-user:", error || data);
+                return Swal.fire("No se pudo guardar", await mensajeFuncion(error, data, "La operación administrativa no se completó."), "error");
             }
 
             await Auth.refrescarUsuarios();
@@ -302,17 +259,18 @@
             }).then(async resultado => {
                 if (!resultado.isConfirmed) return;
 
-                const { error } = await client()
-                    .from("profiles")
-                    .update({ active: false })
-                    .eq("id", usuario.id);
+                const { data, error } = await client().functions.invoke("admin-manage-user", {
+                    body: {
+                        userId: usuario.id,
+                        fullName: usuario.nombre,
+                        login: usuario.login,
+                        role: usuario.rol,
+                        active: false
+                    }
+                });
 
-                if (error) {
-                    return Swal.fire(
-                        "No se pudo desactivar",
-                        error.message,
-                        "error"
-                    );
+                if (error || data?.success !== true) {
+                    return Swal.fire("No se pudo desactivar", await mensajeFuncion(error, data, "No se pudo desactivar la cuenta."), "error");
                 }
 
                 await Auth.refrescarUsuarios();

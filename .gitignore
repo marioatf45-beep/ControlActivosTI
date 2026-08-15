@@ -1,0 +1,6 @@
+supabase/.temp/
+.codex-backups/
+.codex-credentials/
+.env
+.env.*
+!.env.example
