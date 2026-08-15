@@ -108,6 +108,7 @@
             if (!perfil.active) throw new Error("La cuenta está desactivada.");
 
             this.usuario = mapearPerfil(perfil);
+            await this.asegurarMFA();
             await this.refrescarUsuarios();
             this.establecerSesion(this.usuario);
 
@@ -115,6 +116,71 @@
                 .update({ last_access_at: new Date().toISOString() })
                 .eq("id", user.id)
                 .then(() => {});
+        },
+
+        async asegurarMFA() {
+            if (!this.requiereAdmin()) return;
+            const { data: level, error: levelError } = await client().auth.mfa.getAuthenticatorAssuranceLevel();
+            if (levelError) throw levelError;
+            if (level?.currentLevel === "aal2") return;
+
+            const { data: factors, error: factorsError } = await client().auth.mfa.listFactors();
+            if (factorsError) throw factorsError;
+            const verified = (factors?.totp || []).filter(factor => factor.status === "verified");
+
+            if (!verified.length) {
+                for (const factor of factors?.totp || []) {
+                    if (factor.status !== "verified") await client().auth.mfa.unenroll({ factorId: factor.id });
+                }
+                const { data: enrolled, error: enrollError } = await client().auth.mfa.enroll({
+                    factorType: "totp",
+                    friendlyName: "Control TI Administrador"
+                });
+                if (enrollError) throw enrollError;
+                const result = await Swal.fire({
+                    title: "Protege tu cuenta administrativa",
+                    html: `<p>Escanea este QR con Google Authenticator, Microsoft Authenticator, Authy o 1Password.</p><img class="access-mfa-qr" src="${this.escape(enrolled.totp.qr_code)}" alt="Código QR para MFA"><details><summary>No puedo escanearlo</summary><code class="access-mfa-secret">${this.escape(enrolled.totp.secret)}</code></details>`,
+                    input: "text",
+                    inputLabel: "Código de 6 dígitos",
+                    inputAttributes: { inputmode: "numeric", autocomplete: "one-time-code", maxlength: "6" },
+                    confirmButtonText: "Activar MFA",
+                    confirmButtonColor: "#d7192d",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    preConfirm: async code => {
+                        if (!/^\d{6}$/.test(String(code).trim())) return Swal.showValidationMessage("Ingresa los 6 dígitos.");
+                        const { data: challenge, error: challengeError } = await client().auth.mfa.challenge({ factorId: enrolled.id });
+                        if (challengeError) return Swal.showValidationMessage(challengeError.message);
+                        const { error: verifyError } = await client().auth.mfa.verify({ factorId: enrolled.id, challengeId: challenge.id, code: String(code).trim() });
+                        if (verifyError) return Swal.showValidationMessage("El código no es válido o ya venció.");
+                        return true;
+                    }
+                });
+                if (!result.isConfirmed) throw new Error("MFA_REQUIRED");
+                return;
+            }
+
+            const factor = verified[0];
+            const result = await Swal.fire({
+                title: "Verificación administrativa",
+                text: "Ingresa el código de tu aplicación autenticadora.",
+                input: "text",
+                inputLabel: "Código de 6 dígitos",
+                inputAttributes: { inputmode: "numeric", autocomplete: "one-time-code", maxlength: "6" },
+                confirmButtonText: "Verificar",
+                confirmButtonColor: "#d7192d",
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                preConfirm: async code => {
+                    if (!/^\d{6}$/.test(String(code).trim())) return Swal.showValidationMessage("Ingresa los 6 dígitos.");
+                    const { data: challenge, error: challengeError } = await client().auth.mfa.challenge({ factorId: factor.id });
+                    if (challengeError) return Swal.showValidationMessage(challengeError.message);
+                    const { error: verifyError } = await client().auth.mfa.verify({ factorId: factor.id, challengeId: challenge.id, code: String(code).trim() });
+                    if (verifyError) return Swal.showValidationMessage("El código no es válido o ya venció.");
+                    return true;
+                }
+            });
+            if (!result.isConfirmed) throw new Error("MFA_REQUIRED");
         },
 
         mostrarPortal(forzarCambio = false) {

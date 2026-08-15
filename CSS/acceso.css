@@ -2,3 +2,4 @@ body.access-locked{overflow:hidden}.access-portal{position:fixed;inset:0;z-index
 /* Logotipo vertical centrado en los formularios de acceso */
 .access-form-logo{display:flex;justify-content:center;margin:-18px 0 20px}.access-form-logo img{display:block;width:150px;height:150px;object-fit:contain;border-radius:8px}
 @media(max-width:900px){.access-form-logo{margin-top:-10px}.access-form-logo img{width:135px;height:135px}}
+.swal2-container{z-index:100000!important}.access-mfa-qr{display:block;width:210px;height:210px;margin:12px auto}.access-mfa-secret{display:block;margin-top:8px;padding:8px;overflow-wrap:anywhere;user-select:all}
