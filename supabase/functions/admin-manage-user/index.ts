@@ -5,6 +5,13 @@ import { publishableKey, secretKey } from "../_shared/supabase-keys.ts";
 const ROLES = new Set(["Administrador", "Tecnico", "Inventario", "SoloLectura", "ServiceDesk"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,72}$/;
+function assuranceLevel(token: string): string {
+  try {
+    const value = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = value.padEnd(Math.ceil(value.length / 4) * 4, "=");
+    return JSON.parse(atob(padded))?.aal || "aal1";
+  } catch { return "aal1"; }
+}
 
 Deno.serve(async (request) => {
   const cors = corsHeaders(request);
@@ -27,6 +34,7 @@ Deno.serve(async (request) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: caller } = await admin.from("profiles").select("id, role, active").eq("id", callerData.user.id).maybeSingle();
   if (!caller?.active || caller.role !== "Administrador") return jsonResponse({ error: "FORBIDDEN" }, 403, cors);
+  if (assuranceLevel(token) !== "aal2") return jsonResponse({ error: "MFA_REQUIRED" }, 403, cors);
 
   const body = await readJson(request);
   const userId = typeof body?.userId === "string" ? body.userId : "";
