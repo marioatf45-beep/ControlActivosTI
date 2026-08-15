@@ -158,6 +158,10 @@ async function cargarPagina(pagina) {
             ServiceDesk.iniciar();
         }
 
+        if (pagina === "entradas-salidas" && typeof EntradasSalidas !== "undefined") {
+            EntradasSalidas.iniciar();
+        }
+
         if (typeof Auth !== "undefined") {
             Auth.aplicarPagina(pagina);
         }

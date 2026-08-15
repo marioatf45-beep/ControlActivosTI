@@ -4,15 +4,15 @@
     const permisos = {
         Administrador: { modulos: "*", escritura: "*" },
         Tecnico: {
-            modulos: ["dashboard", "inventario", "empleados", "asignaciones", "gps", "mantenimiento", "reportes", "servicedesk"],
-            escritura: ["mantenimiento", "servicedesk"]
+            modulos: ["dashboard", "inventario", "entradas-salidas", "empleados", "asignaciones", "gps", "mantenimiento", "reportes", "servicedesk"],
+            escritura: ["entradas-salidas", "mantenimiento", "servicedesk"]
         },
         Inventario: {
-            modulos: ["dashboard", "inventario", "empleados", "asignaciones", "gps", "mantenimiento", "reportes", "depreciacion", "servicedesk"],
-            escritura: ["inventario", "empleados", "asignaciones", "gps"]
+            modulos: ["dashboard", "inventario", "entradas-salidas", "empleados", "asignaciones", "gps", "mantenimiento", "reportes", "depreciacion", "servicedesk"],
+            escritura: ["inventario", "entradas-salidas", "empleados", "asignaciones", "gps"]
         },
         SoloLectura: {
-            modulos: ["dashboard", "inventario", "empleados", "asignaciones", "gps", "mantenimiento", "reportes", "depreciacion", "servicedesk"],
+            modulos: ["dashboard", "inventario", "entradas-salidas", "empleados", "asignaciones", "gps", "mantenimiento", "reportes", "depreciacion", "servicedesk"],
             escritura: []
         },
         ServiceDesk: { modulos: ["servicedesk"], escritura: ["servicedesk"] }

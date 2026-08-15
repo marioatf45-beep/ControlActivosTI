@@ -1,0 +1,55 @@
+<div class="container-fluid gate-module">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="mb-1">Entradas y salidas</h2>
+            <p class="text-muted mb-0">Control automático de laptops mediante código de barras o QR</p>
+        </div>
+        <button id="btnSincronizarActivos" class="btn btn-outline-secondary" type="button">
+            <i class="fa-solid fa-rotate me-1"></i> Sincronizar laptops
+        </button>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-5">
+            <section class="card shadow-sm gate-scan-card">
+                <div class="card-body p-4">
+                    <div class="gate-icon"><i class="fa-solid fa-barcode"></i></div>
+                    <h3>Escanear equipo</h3>
+                    <p class="text-muted">Coloca el cursor en el campo y escanea. El lector enviará el código con Enter.</p>
+                    <form id="formEscaneo" autocomplete="off">
+                        <label for="codigoEscaneo" class="form-label fw-semibold">Código de activo, serie o QR</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text"><i class="fa-solid fa-laptop"></i></span>
+                            <input id="codigoEscaneo" class="form-control" inputmode="none" autofocus required
+                                placeholder="Esperando lectura del escáner…" aria-describedby="ayudaEscaneo">
+                            <button class="btn btn-danger" type="submit">Registrar</button>
+                        </div>
+                        <div id="ayudaEscaneo" class="form-text">Cada lectura alterna automáticamente entre salida y entrada.</div>
+                    </form>
+                    <div id="resultadoEscaneo" class="gate-result mt-4" hidden aria-live="polite"></div>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-xl-7">
+            <div class="row g-3 mb-4">
+                <div class="col-sm-4"><div class="gate-kpi"><span>Dentro</span><strong id="equiposDentro">0</strong></div></div>
+                <div class="col-sm-4"><div class="gate-kpi gate-kpi-out"><span>Fuera</span><strong id="equiposFuera">0</strong></div></div>
+                <div class="col-sm-4"><div class="gate-kpi"><span>Movimientos hoy</span><strong id="movimientosHoy">0</strong></div></div>
+            </div>
+            <section class="card shadow-sm">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+                    <strong>Historial reciente</strong>
+                    <input id="buscarMovimiento" class="form-control gate-search" type="search" placeholder="Buscar equipo o responsable">
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead><tr><th>Movimiento</th><th>Equipo</th><th>Fecha y hora</th><th>Registró</th></tr></thead>
+                        <tbody id="historialEntradasSalidas"></tbody>
+                    </table>
+                </div>
+                <div id="historialVacio" class="text-center text-muted p-4" hidden>No hay movimientos registrados.</div>
+            </section>
+        </div>
+    </div>
+</div>
