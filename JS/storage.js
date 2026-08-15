@@ -72,6 +72,46 @@ function guardarBaseDatos(database) {
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(database));
 
+    sincronizarSistemaCentral(database);
+
+}
+
+async function sincronizarSistemaCentral(database) {
+    const cliente = window.ControlTISupabase?.client;
+    const rol = window.Auth?.usuario?.rol;
+    if (!cliente || !["Administrador", "Inventario", "Tecnico"].includes(rol)) return;
+    try {
+        const { error } = await cliente.rpc("controlti_save_system_state", { p_data: database });
+        if (error) throw error;
+    } catch (error) {
+        console.error("No se pudo sincronizar el sistema central.", error);
+        window.dispatchEvent(new CustomEvent("controlti:sync-error"));
+    }
+}
+
+async function cargarSistemaCentral() {
+    const cliente = window.ControlTISupabase?.client;
+    if (!cliente || !window.Auth?.usuario || window.Auth.usuario.rol === "ServiceDesk") return;
+    const local = obtenerBaseDatos();
+    const { data, error } = await cliente.from("controlti_system_state").select("data").eq("singleton", true).maybeSingle();
+    if (error) throw error;
+    if (data?.data) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data.data));
+        return;
+    }
+    if (local && ["Administrador", "Inventario"].includes(window.Auth.usuario.rol)) {
+        const inicial = {
+            ...local,
+            activos: (local.activos || []).map(activo => ({
+                ...activo,
+                categoria: "Tablet",
+                actualizadoEn: new Date().toISOString()
+            }))
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(inicial));
+        const { error: saveError } = await cliente.rpc("controlti_save_system_state", { p_data: inicial });
+        if (saveError) throw saveError;
+    }
 }
 
 /* ==========================================================

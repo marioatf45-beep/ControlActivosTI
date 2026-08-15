@@ -39,9 +39,9 @@
 
         async sincronizarActivos(notificar) {
             const button = $("btnSincronizarActivos");
-            const laptops = (global.obtenerActivos?.() || []).filter(asset => asset.categoria === "Laptop");
+            const laptops = (global.obtenerActivos?.() || []).filter(asset => ["Laptop", "Tablet"].includes(asset.categoria));
             if (!laptops.length) {
-                if (notificar) Swal.fire("Sin laptops", "No hay laptops en el inventario de este navegador.", "info");
+                if (notificar) Swal.fire("Sin equipos", "No hay laptops o tablets en el inventario central.", "info");
                 return;
             }
             button.disabled = true;
@@ -53,7 +53,7 @@
                 }));
                 const { error } = await client().rpc("controlti_sync_gate_assets", { p_assets: rows });
                 if (error) throw error;
-                if (notificar) Swal.fire({ icon: "success", title: "Laptops sincronizadas", text: `${rows.length} equipos disponibles para escaneo.`, timer: 1800, showConfirmButton: false });
+                if (notificar) Swal.fire({ icon: "success", title: "Equipos sincronizados", text: `${rows.length} equipos disponibles para escaneo.`, timer: 1800, showConfirmButton: false });
             } catch (error) {
                 console.error(error);
                 if (notificar) Swal.fire("No se pudo sincronizar", error.message || "Intenta nuevamente.", "error");

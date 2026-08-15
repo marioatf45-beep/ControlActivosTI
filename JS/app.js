@@ -19,6 +19,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         await Auth.iniciar();
     }
 
+    if (typeof cargarSistemaCentral === "function") {
+        try {
+            await cargarSistemaCentral();
+        } catch (error) {
+            console.error("No se pudieron cargar los datos centrales.", error);
+            await Swal.fire("Datos no disponibles", "No fue posible sincronizar el sistema. Revisa la conexión e intenta nuevamente.", "error");
+        }
+    }
+
     if (typeof cargarDashboard === "function") {
         cargarDashboard();
     }
