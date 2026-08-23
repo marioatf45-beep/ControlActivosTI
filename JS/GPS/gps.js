@@ -1,23 +1,478 @@
-(function(global){"use strict";
-const $=id=>document.getElementById(id),esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const avisoCarga=(icon,title)=>global.Swal?Swal.fire({icon,title,timer:2200,showConfirmButton:false}):alert(title);
-function descargarPlantillaGPS(){if(!global.XLSX)return avisoCarga("error","No se pudo cargar el generador de Excel.");const ws=XLSX.utils.aoa_to_sheet([["Tipo","Numero","Placas","SerieGPS","Operador","Estado","Latitud","Longitud","Notas"],["TR",1,"ABC-123-A","GPS-0001","Nombre del operador","Activa",19.432608,-99.133209,"Ejemplo; elimina esta fila antes de cargar"]]);ws["!cols"]=[{wch:10},{wch:12},{wch:16},{wch:20},{wch:28},{wch:18},{wch:16},{wch:16},{wch:42}];const instrucciones=XLSX.utils.aoa_to_sheet([["INSTRUCCIONES"],["Tipo: TR para camión o DV para Drive Van."],["Numero y SerieGPS son obligatorios y no deben repetirse."],["Estado permitido: Activa, Mantenimiento o Inactiva."],["Latitud y Longitud son opcionales, pero deben capturarse juntas."],["Las tablets se asignan individualmente para conservar la firma responsiva."]]),catalogos=XLSX.utils.aoa_to_sheet([["Tipo","Estado"],["TR","Activa"],["DV","Mantenimiento"],["","Inactiva"]]),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Unidades");XLSX.utils.book_append_sheet(wb,instrucciones,"Instrucciones");XLSX.utils.book_append_sheet(wb,catalogos,"Catalogos");XLSX.writeFile(wb,"Plantilla_Carga_Masiva_GPS.xlsx");}
-async function importarArchivoGPS(e){const archivo=e.target.files?.[0];e.target.value="";if(!archivo)return;if(!global.XLSX)return avisoCarga("error","No se pudo cargar el lector de Excel.");try{const libro=XLSX.read(await archivo.arrayBuffer(),{type:"array"}),hoja=libro.Sheets["Unidades"]||libro.Sheets[libro.SheetNames[0]],filas=XLSX.utils.sheet_to_json(hoja,{defval:""}),normalizar=v=>String(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-zA-Z0-9]/g,"").toLowerCase(),registros=filas.map(f=>{const x={};Object.entries(f).forEach(([k,v])=>x[normalizar(k)]=v);return{tipo:x.tipo,numero:x.numero,placas:x.placas,serieGPS:x.seriegps,operador:x.operador,estado:x.estado,latitud:x.latitud,longitud:x.longitud,notas:x.notas};}).filter(r=>Object.values(r).some(v=>String(v).trim()!=="")),cantidad=UnidadesCRUD.importar(registros);GPSUnidades.renderizar();GPSUnidades.actualizarMapa();avisoCarga("success",`${cantidad} unidades cargadas correctamente`);}catch(err){avisoCarga("error",err.message||"No fue posible procesar el archivo.");}}
-global.GPSUnidades={mapa:null,marcadores:[],modal:null,firmaDibujada:false,tabletOriginal:"",
-iniciar(){this.modal=bootstrap.Modal.getOrCreateInstance($("modalUnidad"));this.eventos();$("btnPlantillaGPS").onclick=descargarPlantillaGPS;$("btnCargaGPS").onclick=()=>$("archivoCargaGPS").click();$("archivoCargaGPS").onchange=importarArchivoGPS;this.renderizar();this.iniciarMapa();},
-eventos(){$("btnNuevaUnidad").onclick=()=>this.nueva();$("btnQRTablets").onclick=()=>this.imprimirQRTablets();$("tipoUnidad").onchange=()=>this.cambiarTipo();$("tabletUnidad").onchange=()=>this.actualizarFirmaTablet();$("btnLimpiarFirmaTablet").onclick=()=>this.limpiarFirmaTablet();$("modalUnidad").addEventListener("shown.bs.modal",()=>this.prepararFirmaTablet());$("formUnidad").onsubmit=e=>this.guardar(e);$("filtroTipoUnidad").onchange=()=>this.renderizar();$("btnUsarGPS").onclick=()=>this.usarGPS();$("btnAjustarMapa").onclick=()=>this.ajustarMapa();$("listaUnidades").onclick=e=>{const b=e.target.closest("button[data-action]");if(!b)return;const u=UnidadesCRUD.obtener(b.dataset.id);if(!u)return;if(b.dataset.action==="edit")this.editar(u);else if(b.dataset.action==="map")this.enfocar(u);else if(b.dataset.action==="pdf")this.pdfTablet(u);else this.eliminar(u);};},
-tablets(actualId=""){const select=$("tabletUnidad"),lista=obtenerActivos().filter(a=>a.categoria==="Tablet"&&(a.estado==="Disponible"||a.id===actualId));select.innerHTML='<option value="">Sin tablet asignada</option>'+lista.map(a=>`<option value="${esc(a.id)}">${esc(a.activo)} · ${esc(a.serie||"Sin serie")}</option>`).join("");select.value=actualId||"";},
-cambiarTipo(){const esTR=$("tipoUnidad").value==="TR";$("prefijoUnidad").textContent=$("tipoUnidad").value+"-";$("grupoTabletUnidad").hidden=!esTR;if(!esTR)$("tabletUnidad").value="";this.actualizarFirmaTablet();},
-nueva(){$("formUnidad").reset();["unidadId","numeroUnidad","placasUnidad","serieGPSUnidad","operadorUnidad","latitudUnidad","longitudUnidad","notasUnidad"].forEach(id=>$(id).value="");this.tabletOriginal="";this.firmaDibujada=false;$("tipoUnidad").value="TR";$("estadoUnidad").value="Activa";this.tablets();this.cambiarTipo();$("formUnidad").classList.remove("was-validated");this.modal.show();},
-editar(u){$("unidadId").value=u.id;$("tipoUnidad").value=u.tipo;$("numeroUnidad").value=u.numero;$("placasUnidad").value=u.placas;$("serieGPSUnidad").value=u.serieGPS||"";$("operadorUnidad").value=u.operador||"";$("estadoUnidad").value=u.estado;$("latitudUnidad").value=u.ubicacion?.latitud??"";$("longitudUnidad").value=u.ubicacion?.longitud??"";$("notasUnidad").value=u.notas||"";this.tabletOriginal=u.tabletActivoId||"";this.firmaDibujada=false;this.tablets(u.tabletActivoId);this.cambiarTipo();this.modal.show();},
-guardar(e){e.preventDefault();const f=e.currentTarget;if(!f.checkValidity()){f.classList.add("was-validated");return;}try{const canvas=$("firmaTabletUnidad"),firma=this.firmaDibujada?canvas.toDataURL("image/png"):"";const u=UnidadesCRUD.guardar({id:$("unidadId").value,tipo:$("tipoUnidad").value,numero:$("numeroUnidad").value,placas:$("placasUnidad").value,serieGPS:$("serieGPSUnidad").value.trim(),operador:$("operadorUnidad").value.trim(),estado:$("estadoUnidad").value,tabletActivoId:$("tipoUnidad").value==="TR"?$("tabletUnidad").value:"",firmaTablet:firma,latitud:$("latitudUnidad").value,longitud:$("longitudUnidad").value,notas:$("notasUnidad").value.trim()});this.modal.hide();this.renderizar();this.actualizarMapa();if(firma)ResponsivaTabletUnidad.generar(u);this.aviso("success",firma?"Unidad y responsiva guardadas":"Unidad guardada");}catch(err){this.aviso("error",err.message);}},
-renderizar(){const tipo=$("filtroTipoUnidad")?.value||"",todos=UnidadesCRUD.listar(),items=todos.filter(u=>!tipo||u.tipo===tipo);$("gpsTotal").textContent=todos.length;$("gpsCamiones").textContent=todos.filter(u=>u.tipo==="TR").length;$("gpsVans").textContent=todos.filter(u=>u.tipo==="DV").length;$("gpsActivas").textContent=todos.filter(u=>u.estado==="Activa").length;$("listaUnidades").innerHTML=items.map(u=>`<article class="gps-unit"><div class="gps-unit-head"><h4>${esc(u.clave)} · ${esc(u.placas)}</h4><span class="gps-status ${esc(u.estado.toLowerCase())}">${esc(u.estado)}</span></div><div class="gps-unit-meta"><span><i class="fa-solid fa-truck me-1"></i>${u.tipo==="TR"?"Camión":"Drive Van"}</span><span><i class="fa-solid fa-user me-1"></i>${esc(u.operador||"Sin operador")}</span><span><i class="fa-solid fa-satellite-dish me-1"></i>GPS ${esc(u.serieGPS||"Sin serie")}</span><span>${u.ubicacion?'<i class="fa-solid fa-location-dot me-1"></i>Ubicación registrada':'Sin ubicación GPS'}</span></div>${u.tablet?`<div class="gps-tablet"><i class="fa-solid fa-tablet-screen-button me-1"></i>Tablet ${esc(u.tablet.activo)} · ${esc(u.tablet.serie||"Sin serie")}</div>`:""}<div class="gps-unit-actions">${u.ubicacion?`<button class="btn btn-sm btn-outline-primary" data-action="map" data-id="${esc(u.id)}">Ver en mapa</button>`:"<span></span>"}<div>${u.firmaTablet?`<button class="btn btn-sm gps-responsiva-action" data-action="pdf" data-id="${esc(u.id)}" aria-label="Responsiva de tablet ${esc(u.clave)}"><i class="fa-solid fa-file-signature"></i></button>`:""}<button class="btn btn-sm btn-outline-secondary ms-1" data-action="edit" data-id="${esc(u.id)}" aria-label="Editar ${esc(u.clave)}"><i class="fa-solid fa-pen"></i></button><button class="btn btn-sm btn-outline-danger ms-1" data-action="delete" data-id="${esc(u.id)}" aria-label="Eliminar ${esc(u.clave)}"><i class="fa-solid fa-trash"></i></button></div></div></article>`).join("");$("unidadesVacio").hidden=items.length>0;},
-iniciarMapa(){if(!global.L)return;$("mapaUnidades").replaceChildren();this.mapa=L.map("mapaUnidades").setView([23.6345,-102.5528],5);L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap"}).addTo(this.mapa);this.actualizarMapa();setTimeout(()=>this.mapa.invalidateSize(),100);},actualizarMapa(){if(!this.mapa)return;this.marcadores.forEach(m=>m.remove());this.marcadores=[];UnidadesCRUD.listar().filter(u=>u.ubicacion).forEach(u=>{const m=L.marker([u.ubicacion.latitud,u.ubicacion.longitud]).addTo(this.mapa).bindPopup(`<strong>${esc(u.clave)}</strong><br>${esc(u.placas)}<br>${esc(u.operador||"Sin operador")}`);m.unidadId=u.id;this.marcadores.push(m);});this.ajustarMapa();},ajustarMapa(){if(!this.mapa||!this.marcadores.length)return;this.mapa.fitBounds(L.featureGroup(this.marcadores).getBounds().pad(.25),{maxZoom:15});},enfocar(u){if(!this.mapa||!u.ubicacion)return;this.mapa.setView([u.ubicacion.latitud,u.ubicacion.longitud],15);this.marcadores.find(x=>x.unidadId===u.id)?.openPopup();},
-actualizarFirmaTablet(){const seleccion=$("tipoUnidad").value==="TR"?$("tabletUnidad").value:"",requiere=Boolean(seleccion&&seleccion!==this.tabletOriginal);$("grupoFirmaTablet").hidden=!requiere;if(requiere)setTimeout(()=>this.prepararFirmaTablet(),50);else this.firmaDibujada=false;},
-prepararFirmaTablet(){if($("grupoFirmaTablet").hidden)return;const c=$("firmaTabletUnidad"),r=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;c.width=Math.max(1,Math.round(r.width*dpr));c.height=Math.max(1,Math.round(r.height*dpr));const ctx=c.getContext("2d");ctx.scale(dpr,dpr);ctx.lineWidth=2.2;ctx.lineCap="round";ctx.strokeStyle="#202124";this.firmaDibujada=false;let activo=false;const punto=e=>{const b=c.getBoundingClientRect();return{x:e.clientX-b.left,y:e.clientY-b.top};};c.onpointerdown=e=>{activo=true;this.firmaDibujada=true;c.setPointerCapture(e.pointerId);const p=punto(e);ctx.beginPath();ctx.moveTo(p.x,p.y);};c.onpointermove=e=>{if(!activo)return;const p=punto(e);ctx.lineTo(p.x,p.y);ctx.stroke();};c.onpointerup=c.onpointercancel=()=>{activo=false;};},
-limpiarFirmaTablet(){const c=$("firmaTabletUnidad");c.getContext("2d").clearRect(0,0,c.width,c.height);this.firmaDibujada=false;},
-pdfTablet(u){try{ResponsivaTabletUnidad.generar(u);}catch(err){this.aviso("error",err.message);}},
-usarGPS(){if(!navigator.geolocation)return this.aviso("error","Este dispositivo no permite obtener la ubicación.");const b=$("btnUsarGPS");b.disabled=true;b.innerHTML='<i class="fa-solid fa-spinner fa-spin me-1"></i>Obteniendo...';navigator.geolocation.getCurrentPosition(p=>{$("latitudUnidad").value=p.coords.latitude.toFixed(6);$("longitudUnidad").value=p.coords.longitude.toFixed(6);this.restaurarGPS(b);this.aviso("success","Ubicación GPS capturada");},()=>{this.restaurarGPS(b);this.aviso("error","No fue posible obtener la ubicación. Revisa los permisos.");},{enableHighAccuracy:true,timeout:12000});},restaurarGPS(b){b.disabled=false;b.innerHTML='<i class="fa-solid fa-crosshairs me-1"></i>Usar GPS del dispositivo';},
-imprimirQRTablets(){const tablets=obtenerActivos().filter(a=>a.categoria==="Tablet"),unidades=UnidadesCRUD.listar();if(!tablets.length)return this.aviso("info","No hay tablets registradas para generar etiquetas.");if(!global.QRCode)return this.aviso("error","No se pudo cargar el generador QR.");const temporal=document.createElement("div");temporal.style.position="fixed";temporal.style.left="-9999px";document.body.appendChild(temporal);const etiquetas=tablets.map(a=>{const unidad=unidades.find(u=>u.tabletActivoId===a.id),nodo=document.createElement("div"),claveUnidad=unidad?.clave||"SIN-UNIDAD",unidadId=unidad?.id||"";temporal.appendChild(nodo);new QRCode(nodo,{text:`CONTROLTI|${a.id}|${a.activo}|UNIDAD|${unidadId}|${claveUnidad}`,width:150,height:150,correctLevel:QRCode.CorrectLevel.H});const img=nodo.querySelector("canvas")?.toDataURL("image/png")||nodo.querySelector("img")?.src;return `<article><img src="${img}"><strong>${esc(a.activo)}</strong><span>Serie: ${esc(a.serie||"Sin serie")}</span><b class="unidad">${unidad?`Unidad ${esc(unidad.clave)}`:"Sin unidad asignada"}</b></article>`;});temporal.remove();const w=window.open("","_blank");if(!w)return this.aviso("error","El navegador bloqueó la ventana de impresión.");w.document.write(`<!doctype html><html><head><title>QR Tablets por unidad</title><style>body{font-family:Arial;display:grid;grid-template-columns:repeat(3,1fr);gap:14mm;padding:10mm}article{display:flex;flex-direction:column;align-items:center;border:1px dashed #555;padding:7mm;break-inside:avoid}img{width:38mm;height:38mm}strong{margin-top:3mm;font-size:14pt}span{font-size:10pt}.unidad{margin-top:2mm;color:#d7192d;font-size:11pt}@media print{button{display:none}}</style></head><body>${etiquetas.join("")}</body></html>`);w.document.close();w.onload=()=>w.print();},
-eliminar(u){Swal.fire({icon:"warning",title:`¿Eliminar ${u.clave}?`,text:"La tablet vinculada volverá a quedar disponible.",showCancelButton:true,confirmButtonText:"Eliminar",cancelButtonText:"Cancelar",confirmButtonColor:"#d7192d"}).then(r=>{if(r.isConfirmed){UnidadesCRUD.eliminar(u.id);this.renderizar();this.actualizarMapa();}});},aviso(icon,title){global.Swal?Swal.fire({icon,title,timer:1800,showConfirmButton:false}):alert(title);}}
+(function (global) {
+  "use strict";
+  const $ = (id) => document.getElementById(id),
+    esc = (v) =>
+      String(v ?? "").replace(
+        /[&<>"']/g,
+        (c) =>
+          ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;",
+          })[c],
+      );
+  const avisoCarga = (icon, title) =>
+    global.Swal
+      ? Swal.fire({ icon, title, timer: 2200, showConfirmButton: false })
+      : alert(title);
+  const nombresTipo = { TR: "Camión", DV: "Drive Van", FB: "FB", CH: "CH", C: "C", H: "H" };
+  function descargarPlantillaGPS() {
+    if (!global.XLSX)
+      return avisoCarga("error", "No se pudo cargar el generador de Excel.");
+    const ws = XLSX.utils.aoa_to_sheet([
+      [
+        "Tipo",
+        "Numero",
+        "Placas",
+        "SerieGPS",
+        "Operador",
+        "Estado",
+        "Latitud",
+        "Longitud",
+        "Notas",
+      ],
+      [
+        "TR",
+        1,
+        "ABC-123-A",
+        "GPS-0001",
+        "Nombre del operador",
+        "Activa",
+        19.432608,
+        -99.133209,
+        "Ejemplo; elimina esta fila antes de cargar",
+      ],
+    ]);
+    ws["!cols"] = [
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 20 },
+      { wch: 28 },
+      { wch: 18 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 42 },
+    ];
+    const instrucciones = XLSX.utils.aoa_to_sheet([
+        ["INSTRUCCIONES"],
+        ["Tipos permitidos: TR, DV, FB, CH, C y H."],
+        ["Numero y SerieGPS son obligatorios y no deben repetirse."],
+        ["Estado permitido: Activa, Mantenimiento o Inactiva."],
+        ["Latitud y Longitud son opcionales, pero deben capturarse juntas."],
+        [
+          "Las tablets se asignan individualmente para conservar la firma responsiva.",
+        ],
+      ]),
+      catalogos = XLSX.utils.aoa_to_sheet([
+        ["Tipo", "Estado"],
+        ["TR", "Activa"],
+        ["DV", "Mantenimiento"],
+        ["FB", "Inactiva"],
+        ["CH", ""],
+        ["C", ""],
+        ["H", ""],
+      ]),
+      wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Unidades");
+    XLSX.utils.book_append_sheet(wb, instrucciones, "Instrucciones");
+    XLSX.utils.book_append_sheet(wb, catalogos, "Catalogos");
+    XLSX.writeFile(wb, "Plantilla_Carga_Masiva_GPS.xlsx");
+  }
+  async function importarArchivoGPS(e) {
+    const archivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!archivo) return;
+    if (!global.XLSX)
+      return avisoCarga("error", "No se pudo cargar el lector de Excel.");
+    try {
+      const libro = XLSX.read(await archivo.arrayBuffer(), { type: "array" }),
+        hoja = libro.Sheets["Unidades"] || libro.Sheets[libro.SheetNames[0]],
+        filas = XLSX.utils.sheet_to_json(hoja, { defval: "" }),
+        normalizar = (v) =>
+          String(v)
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9]/g, "")
+            .toLowerCase(),
+        registros = filas
+          .map((f) => {
+            const x = {};
+            Object.entries(f).forEach(([k, v]) => (x[normalizar(k)] = v));
+            return {
+              tipo: x.tipo,
+              numero: x.numero,
+              placas: x.placas,
+              serieGPS: x.seriegps,
+              operador: x.operador,
+              estado: x.estado,
+              latitud: x.latitud,
+              longitud: x.longitud,
+              notas: x.notas,
+            };
+          })
+          .filter((r) => Object.values(r).some((v) => String(v).trim() !== "")),
+        cantidad = UnidadesCRUD.importar(registros);
+      GPSUnidades.renderizar();
+      GPSUnidades.actualizarMapa();
+      avisoCarga("success", `${cantidad} unidades cargadas correctamente`);
+    } catch (err) {
+      avisoCarga("error", err.message || "No fue posible procesar el archivo.");
+    }
+  }
+  global.GPSUnidades = {
+    mapa: null,
+    marcadores: [],
+    modal: null,
+    firmaDibujada: false,
+    tabletOriginal: "",
+    iniciar() {
+      this.modal = bootstrap.Modal.getOrCreateInstance($("modalUnidad"));
+      this.eventos();
+      $("btnPlantillaGPS").onclick = descargarPlantillaGPS;
+      $("btnCargaGPS").onclick = () => $("archivoCargaGPS").click();
+      $("archivoCargaGPS").onchange = importarArchivoGPS;
+      this.renderizar();
+      this.iniciarMapa();
+    },
+    eventos() {
+      $("btnNuevaUnidad").onclick = () => this.nueva();
+      $("btnQRTablets").onclick = () => this.imprimirQRTablets();
+      $("tipoUnidad").onchange = () => this.cambiarTipo();
+      $("tabletUnidad").onchange = () => this.actualizarFirmaTablet();
+      $("btnLimpiarFirmaTablet").onclick = () => this.limpiarFirmaTablet();
+      $("modalUnidad").addEventListener("shown.bs.modal", () =>
+        this.prepararFirmaTablet(),
+      );
+      $("formUnidad").onsubmit = (e) => this.guardar(e);
+      $("filtroTipoUnidad").onchange = () => this.renderizar();
+      $("btnUsarGPS").onclick = () => this.usarGPS();
+      $("btnAjustarMapa").onclick = () => this.ajustarMapa();
+      $("listaUnidades").onclick = (e) => {
+        const b = e.target.closest("button[data-action]");
+        if (!b) return;
+        const u = UnidadesCRUD.obtener(b.dataset.id);
+        if (!u) return;
+        if (b.dataset.action === "edit") this.editar(u);
+        else if (b.dataset.action === "map") this.enfocar(u);
+        else if (b.dataset.action === "pdf") this.pdfTablet(u);
+        else this.eliminar(u);
+      };
+    },
+    tablets(actualId = "") {
+      const select = $("tabletUnidad"),
+        lista = obtenerActivos().filter(
+          (a) =>
+            a.categoria === "Tablet" &&
+            (a.estado === "Disponible" || a.id === actualId),
+        );
+      select.innerHTML =
+        '<option value="">Sin tablet asignada</option>' +
+        lista
+          .map(
+            (a) =>
+              `<option value="${esc(a.id)}">${esc(a.activo)} · ${esc(a.serie || "Sin serie")}</option>`,
+          )
+          .join("");
+      select.value = actualId || "";
+    },
+    cambiarTipo() {
+      const esTR = $("tipoUnidad").value === "TR";
+      $("prefijoUnidad").textContent = $("tipoUnidad").value + "-";
+      $("grupoTabletUnidad").hidden = !esTR;
+      if (!esTR) $("tabletUnidad").value = "";
+      this.actualizarFirmaTablet();
+    },
+    nueva() {
+      $("formUnidad").reset();
+      [
+        "unidadId",
+        "numeroUnidad",
+        "placasUnidad",
+        "serieGPSUnidad",
+        "operadorUnidad",
+        "latitudUnidad",
+        "longitudUnidad",
+        "notasUnidad",
+      ].forEach((id) => ($(id).value = ""));
+      this.tabletOriginal = "";
+      this.firmaDibujada = false;
+      $("tipoUnidad").value = "TR";
+      $("estadoUnidad").value = "Activa";
+      this.tablets();
+      this.cambiarTipo();
+      $("formUnidad").classList.remove("was-validated");
+      this.modal.show();
+    },
+    editar(u) {
+      $("unidadId").value = u.id;
+      $("tipoUnidad").value = u.tipo;
+      $("numeroUnidad").value = u.numero;
+      $("placasUnidad").value = u.placas;
+      $("serieGPSUnidad").value = u.serieGPS || "";
+      $("operadorUnidad").value = u.operador || "";
+      $("estadoUnidad").value = u.estado;
+      $("latitudUnidad").value = u.ubicacion?.latitud ?? "";
+      $("longitudUnidad").value = u.ubicacion?.longitud ?? "";
+      $("notasUnidad").value = u.notas || "";
+      this.tabletOriginal = u.tabletActivoId || "";
+      this.firmaDibujada = false;
+      this.tablets(u.tabletActivoId);
+      this.cambiarTipo();
+      this.modal.show();
+    },
+    guardar(e) {
+      e.preventDefault();
+      const f = e.currentTarget;
+      if (!f.checkValidity()) {
+        f.classList.add("was-validated");
+        return;
+      }
+      try {
+        const canvas = $("firmaTabletUnidad"),
+          firma = this.firmaDibujada ? canvas.toDataURL("image/png") : "";
+        const u = UnidadesCRUD.guardar({
+          id: $("unidadId").value,
+          tipo: $("tipoUnidad").value,
+          numero: $("numeroUnidad").value,
+          placas: $("placasUnidad").value,
+          serieGPS: $("serieGPSUnidad").value.trim(),
+          operador: $("operadorUnidad").value.trim(),
+          estado: $("estadoUnidad").value,
+          tabletActivoId:
+            $("tipoUnidad").value === "TR" ? $("tabletUnidad").value : "",
+          firmaTablet: firma,
+          latitud: $("latitudUnidad").value,
+          longitud: $("longitudUnidad").value,
+          notas: $("notasUnidad").value.trim(),
+        });
+        this.modal.hide();
+        this.renderizar();
+        this.actualizarMapa();
+        if (firma) ResponsivaTabletUnidad.generar(u);
+        this.aviso(
+          "success",
+          firma ? "Unidad y responsiva guardadas" : "Unidad guardada",
+        );
+      } catch (err) {
+        this.aviso("error", err.message);
+      }
+    },
+    renderizar() {
+      const tipo = $("filtroTipoUnidad")?.value || "",
+        todos = UnidadesCRUD.listar(),
+        items = todos.filter((u) => !tipo || u.tipo === tipo);
+      $("gpsTotal").textContent = todos.length;
+      $("gpsCamiones").textContent = todos.filter(
+        (u) => u.tipo === "TR",
+      ).length;
+      $("gpsVans").textContent = todos.filter((u) => u.tipo === "DV").length;
+      $("gpsActivas").textContent = todos.filter(
+        (u) => u.estado === "Activa",
+      ).length;
+      $("listaUnidades").innerHTML = items
+        .map(
+          (u) =>
+            `<article class="gps-unit"><div class="gps-unit-head"><h4>${esc(u.clave)} · ${esc(u.placas)}</h4><span class="gps-status ${esc(u.estado.toLowerCase())}">${esc(u.estado)}</span></div><div class="gps-unit-meta"><span><i class="fa-solid fa-truck me-1"></i>${esc(nombresTipo[u.tipo] || u.tipo)}</span><span><i class="fa-solid fa-user me-1"></i>${esc(u.operador || "Sin operador")}</span><span><i class="fa-solid fa-satellite-dish me-1"></i>GPS ${esc(u.serieGPS || "Sin serie")}</span><span>${u.ubicacion ? '<i class="fa-solid fa-location-dot me-1"></i>Ubicación registrada' : "Sin ubicación GPS"}</span></div>${u.tablet ? `<div class="gps-tablet"><i class="fa-solid fa-tablet-screen-button me-1"></i>Tablet ${esc(u.tablet.activo)} · ${esc(u.tablet.serie || "Sin serie")}</div>` : ""}<div class="gps-unit-actions">${u.ubicacion ? `<button class="btn btn-sm btn-outline-primary" data-action="map" data-id="${esc(u.id)}">Ver en mapa</button>` : "<span></span>"}<div>${u.firmaTablet ? `<button class="btn btn-sm gps-responsiva-action" data-action="pdf" data-id="${esc(u.id)}" aria-label="Responsiva de tablet ${esc(u.clave)}"><i class="fa-solid fa-file-signature"></i></button>` : ""}<button class="btn btn-sm btn-outline-secondary ms-1" data-action="edit" data-id="${esc(u.id)}" aria-label="Editar ${esc(u.clave)}"><i class="fa-solid fa-pen"></i></button><button class="btn btn-sm btn-outline-danger ms-1" data-action="delete" data-id="${esc(u.id)}" aria-label="Eliminar ${esc(u.clave)}"><i class="fa-solid fa-trash"></i></button></div></div></article>`,
+        )
+        .join("");
+      $("unidadesVacio").hidden = items.length > 0;
+    },
+    iniciarMapa() {
+      if (!global.L) return;
+      $("mapaUnidades").replaceChildren();
+      this.mapa = L.map("mapaUnidades").setView([23.6345, -102.5528], 5);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap",
+      }).addTo(this.mapa);
+      this.actualizarMapa();
+      setTimeout(() => this.mapa.invalidateSize(), 100);
+    },
+    actualizarMapa() {
+      if (!this.mapa) return;
+      this.marcadores.forEach((m) => m.remove());
+      this.marcadores = [];
+      UnidadesCRUD.listar()
+        .filter((u) => u.ubicacion)
+        .forEach((u) => {
+          const m = L.marker([u.ubicacion.latitud, u.ubicacion.longitud])
+            .addTo(this.mapa)
+            .bindPopup(
+              `<strong>${esc(u.clave)}</strong><br>${esc(u.placas)}<br>${esc(u.operador || "Sin operador")}`,
+            );
+          m.unidadId = u.id;
+          this.marcadores.push(m);
+        });
+      this.ajustarMapa();
+    },
+    ajustarMapa() {
+      if (!this.mapa || !this.marcadores.length) return;
+      this.mapa.fitBounds(
+        L.featureGroup(this.marcadores).getBounds().pad(0.25),
+        { maxZoom: 15 },
+      );
+    },
+    enfocar(u) {
+      if (!this.mapa || !u.ubicacion) return;
+      this.mapa.setView([u.ubicacion.latitud, u.ubicacion.longitud], 15);
+      this.marcadores.find((x) => x.unidadId === u.id)?.openPopup();
+    },
+    actualizarFirmaTablet() {
+      const seleccion =
+          $("tipoUnidad").value === "TR" ? $("tabletUnidad").value : "",
+        requiere = Boolean(seleccion && seleccion !== this.tabletOriginal);
+      $("grupoFirmaTablet").hidden = !requiere;
+      if (requiere) setTimeout(() => this.prepararFirmaTablet(), 50);
+      else this.firmaDibujada = false;
+    },
+    prepararFirmaTablet() {
+      if ($("grupoFirmaTablet").hidden) return;
+      const c = $("firmaTabletUnidad"),
+        r = c.getBoundingClientRect(),
+        dpr = window.devicePixelRatio || 1;
+      c.width = Math.max(1, Math.round(r.width * dpr));
+      c.height = Math.max(1, Math.round(r.height * dpr));
+      const ctx = c.getContext("2d");
+      ctx.scale(dpr, dpr);
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#202124";
+      this.firmaDibujada = false;
+      let activo = false;
+      const punto = (e) => {
+        const b = c.getBoundingClientRect();
+        return { x: e.clientX - b.left, y: e.clientY - b.top };
+      };
+      c.onpointerdown = (e) => {
+        activo = true;
+        this.firmaDibujada = true;
+        c.setPointerCapture(e.pointerId);
+        const p = punto(e);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+      };
+      c.onpointermove = (e) => {
+        if (!activo) return;
+        const p = punto(e);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      };
+      c.onpointerup = c.onpointercancel = () => {
+        activo = false;
+      };
+    },
+    limpiarFirmaTablet() {
+      const c = $("firmaTabletUnidad");
+      c.getContext("2d").clearRect(0, 0, c.width, c.height);
+      this.firmaDibujada = false;
+    },
+    pdfTablet(u) {
+      try {
+        ResponsivaTabletUnidad.generar(u);
+      } catch (err) {
+        this.aviso("error", err.message);
+      }
+    },
+    usarGPS() {
+      if (!navigator.geolocation)
+        return this.aviso(
+          "error",
+          "Este dispositivo no permite obtener la ubicación.",
+        );
+      const b = $("btnUsarGPS");
+      b.disabled = true;
+      b.innerHTML =
+        '<i class="fa-solid fa-spinner fa-spin me-1"></i>Obteniendo...';
+      navigator.geolocation.getCurrentPosition(
+        (p) => {
+          $("latitudUnidad").value = p.coords.latitude.toFixed(6);
+          $("longitudUnidad").value = p.coords.longitude.toFixed(6);
+          this.restaurarGPS(b);
+          this.aviso("success", "Ubicación GPS capturada");
+        },
+        () => {
+          this.restaurarGPS(b);
+          this.aviso(
+            "error",
+            "No fue posible obtener la ubicación. Revisa los permisos.",
+          );
+        },
+        { enableHighAccuracy: true, timeout: 12000 },
+      );
+    },
+    restaurarGPS(b) {
+      b.disabled = false;
+      b.innerHTML =
+        '<i class="fa-solid fa-crosshairs me-1"></i>Usar GPS del dispositivo';
+    },
+    imprimirQRTablets() {
+      const tablets = obtenerActivos().filter((a) => a.categoria === "Tablet"),
+        unidades = UnidadesCRUD.listar();
+      if (!tablets.length)
+        return this.aviso(
+          "info",
+          "No hay tablets registradas para generar etiquetas.",
+        );
+      if (!global.QRCode)
+        return this.aviso("error", "No se pudo cargar el generador QR.");
+      const temporal = document.createElement("div");
+      temporal.style.position = "fixed";
+      temporal.style.left = "-9999px";
+      document.body.appendChild(temporal);
+      const etiquetas = tablets.map((a) => {
+        const unidad = unidades.find((u) => u.tabletActivoId === a.id),
+          nodo = document.createElement("div"),
+          claveUnidad = unidad?.clave || "SIN-UNIDAD",
+          unidadId = unidad?.id || "";
+        temporal.appendChild(nodo);
+        new QRCode(nodo, {
+          text: `CONTROLTI|${a.id}|${a.activo}|UNIDAD|${unidadId}|${claveUnidad}`,
+          width: 150,
+          height: 150,
+          correctLevel: QRCode.CorrectLevel.H,
+        });
+        const img =
+          nodo.querySelector("canvas")?.toDataURL("image/png") ||
+          nodo.querySelector("img")?.src;
+        return `<article><img src="${img}"><strong>${esc(a.activo)}</strong><span>Serie: ${esc(a.serie || "Sin serie")}</span><b class="unidad">${unidad ? `Unidad ${esc(unidad.clave)}` : "Sin unidad asignada"}</b></article>`;
+      });
+      temporal.remove();
+      const w = window.open("", "_blank");
+      if (!w)
+        return this.aviso(
+          "error",
+          "El navegador bloqueó la ventana de impresión.",
+        );
+      w.document.write(
+        `<!doctype html><html><head><title>QR Tablets por unidad</title><style>body{font-family:Arial;display:grid;grid-template-columns:repeat(3,1fr);gap:14mm;padding:10mm}article{display:flex;flex-direction:column;align-items:center;border:1px dashed #555;padding:7mm;break-inside:avoid}img{width:38mm;height:38mm}strong{margin-top:3mm;font-size:14pt}span{font-size:10pt}.unidad{margin-top:2mm;color:#d7192d;font-size:11pt}@media print{button{display:none}}</style></head><body>${etiquetas.join("")}</body></html>`,
+      );
+      w.document.close();
+      w.onload = () => w.print();
+    },
+    eliminar(u) {
+      Swal.fire({
+        icon: "warning",
+        title: `¿Eliminar ${u.clave}?`,
+        text: "La tablet vinculada volverá a quedar disponible.",
+        showCancelButton: true,
+        confirmButtonText: "Eliminar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#d7192d",
+      }).then((r) => {
+        if (r.isConfirmed) {
+          UnidadesCRUD.eliminar(u.id);
+          this.renderizar();
+          this.actualizarMapa();
+        }
+      });
+    },
+    aviso(icon, title) {
+      global.Swal
+        ? Swal.fire({ icon, title, timer: 1800, showConfirmButton: false })
+        : alert(title);
+    },
+  };
 })(window);

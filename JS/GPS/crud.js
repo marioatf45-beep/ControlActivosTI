@@ -1,12 +1,249 @@
-(function(global){"use strict";
-const uuid=()=>global.crypto?.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
-const lista=()=>obtenerUnidades();
-const folio=()=>`RTAB-${new Date().toISOString().slice(0,10).replaceAll("-","")}-${String(lista().filter(u=>u.folioTablet).length+1).padStart(4,"0")}`;
-const liberarTablet=(activoId,unidadClave)=>{if(!activoId)return;const activos=obtenerActivos(),i=activos.findIndex(a=>a.id===activoId);if(i>=0&&activos[i].asignadoUnidad===unidadClave){activos[i]={...activos[i],estado:"Disponible",responsable:"",asignadoUnidad:"",actualizadoEn:new Date().toISOString()};guardarActivos(activos);}};
-const asignarTablet=(activoId,unidadClave)=>{if(!activoId)return;const activos=obtenerActivos(),i=activos.findIndex(a=>a.id===activoId&&a.categoria==="Tablet"&&(a.estado==="Disponible"||a.asignadoUnidad===unidadClave));if(i<0)throw new Error("La tablet seleccionada ya no está disponible.");activos[i]={...activos[i],estado:"Asignado",responsable:`Unidad ${unidadClave}`,asignadoUnidad:unidadClave,empleadoId:"",actualizadoEn:new Date().toISOString()};guardarActivos(activos);};
-global.UnidadesCRUD={
-listar(){return lista().map(x=>({...x}));},obtener(id){return lista().find(x=>x.id===id)||null;},
-guardar(d){const unidades=lista(),anterior=unidades.find(x=>x.id===d.id),numero=String(d.numero||"").replace(/\D/g,"").padStart(3,"0"),clave=`${d.tipo}-${numero}`,tabletCambio=(anterior?.tabletActivoId||"")!==(d.tabletActivoId||"");if(!numero||!/^\d+$/.test(String(d.numero)))throw new Error("El número de unidad debe contener solo dígitos.");if(unidades.some(x=>x.clave===clave&&x.id!==d.id))throw new Error(`La unidad ${clave} ya existe.`);if(unidades.some(x=>x.serieGPS===d.serieGPS.toUpperCase()&&x.id!==d.id))throw new Error("El número de serie del GPS ya está registrado.");if(d.tipo!=="TR"&&d.tabletActivoId)throw new Error("Las tablets solo pueden vincularse a unidades TR.");if(d.tabletActivoId&&!d.operador.trim())throw new Error("Captura el operador responsable de la tablet.");if(d.tabletActivoId&&tabletCambio&&!d.firmaTablet)throw new Error("La firma responsiva del operador es obligatoria.");const ahora=new Date().toISOString(),ubicacion=d.latitud!==""&&d.longitud!==""?{latitud:Number(d.latitud),longitud:Number(d.longitud),fecha:ahora}:null;if(ubicacion&&(ubicacion.latitud>90||ubicacion.latitud< -90||ubicacion.longitud>180||ubicacion.longitud< -180))throw new Error("Las coordenadas GPS no son válidas.");if(tabletCambio)liberarTablet(anterior?.tabletActivoId,anterior?.clave);asignarTablet(d.tabletActivoId,clave);const tablet=d.tabletActivoId?obtenerActivos().find(a=>a.id===d.tabletActivoId):null,nuevaResponsiva=d.tabletActivoId&&tabletCambio;const registro={id:d.id||uuid(),tipo:d.tipo,numero,clave,placas:d.placas.toUpperCase(),serieGPS:d.serieGPS.toUpperCase(),operador:d.operador,estado:d.estado,tabletActivoId:d.tipo==="TR"?(d.tabletActivoId||""):"",tablet:tablet?{activo:tablet.activo,serie:tablet.serie}:null,firmaTablet:nuevaResponsiva?d.firmaTablet:(d.tabletActivoId?anterior?.firmaTablet||"":""),folioTablet:nuevaResponsiva?folio():(d.tabletActivoId?anterior?.folioTablet||"":""),fechaAsignacionTablet:nuevaResponsiva?ahora.slice(0,10):(d.tabletActivoId?anterior?.fechaAsignacionTablet||"":""),ubicacion,notas:d.notas,creadoEn:anterior?.creadoEn||ahora,actualizadoEn:ahora};const i=unidades.findIndex(x=>x.id===registro.id);if(i<0)unidades.unshift(registro);else unidades[i]=registro;guardarUnidades(unidades);registrarMovimiento(d.id?"Actualización de unidad":"Alta de unidad",`${d.id?"Se actualizó":"Se registró"} la unidad ${clave}`);if(nuevaResponsiva)registrarMovimiento("Responsiva de tablet",`Se firmó ${registro.folioTablet} para la tablet ${tablet.activo} asignada a ${clave}`);return registro;},
-importar(datos){if(!Array.isArray(datos)||!datos.length)throw new Error("El archivo no contiene unidades.");const actuales=lista(),claves=new Set(actuales.map(u=>u.clave)),series=new Set(actuales.map(u=>String(u.serieGPS||"").toUpperCase())),estados=new Set(["Activa","Mantenimiento","Inactiva"]),ahora=new Date().toISOString(),nuevas=[];datos.forEach((d,i)=>{const fila=i+2,tipo=String(d.tipo||"").trim().toUpperCase(),numeroOriginal=String(d.numero??"").trim(),numero=numeroOriginal.replace(/\D/g,"").padStart(3,"0"),clave=`${tipo}-${numero}`,serieGPS=String(d.serieGPS||"").trim().toUpperCase(),estado=String(d.estado||"Activa").trim();if(!["TR","DV"].includes(tipo))throw new Error(`Fila ${fila}: Tipo debe ser TR o DV.`);if(!numeroOriginal||!/^\d+$/.test(numeroOriginal))throw new Error(`Fila ${fila}: Número de unidad inválido.`);if(!serieGPS)throw new Error(`Fila ${fila}: Serie GPS es obligatoria.`);if(claves.has(clave))throw new Error(`Fila ${fila}: La unidad ${clave} está duplicada o ya existe.`);if(series.has(serieGPS))throw new Error(`Fila ${fila}: La serie GPS ${serieGPS} está duplicada o ya existe.`);if(!estados.has(estado))throw new Error(`Fila ${fila}: Estado debe ser Activa, Mantenimiento o Inactiva.`);const tieneLat=String(d.latitud??"").trim()!=="",tieneLon=String(d.longitud??"").trim()!=="";if(tieneLat!==tieneLon)throw new Error(`Fila ${fila}: captura latitud y longitud juntas.`);const lat=Number(d.latitud),lon=Number(d.longitud);if(tieneLat&&(!Number.isFinite(lat)||!Number.isFinite(lon)||lat< -90||lat>90||lon< -180||lon>180))throw new Error(`Fila ${fila}: coordenadas GPS inválidas.`);claves.add(clave);series.add(serieGPS);nuevas.push({id:uuid(),tipo,numero,clave,placas:String(d.placas||"").trim().toUpperCase(),serieGPS,operador:String(d.operador||"").trim(),estado,tabletActivoId:"",tablet:null,firmaTablet:"",folioTablet:"",fechaAsignacionTablet:"",ubicacion:tieneLat?{latitud:lat,longitud:lon,fecha:ahora}:null,notas:String(d.notas||"").trim(),creadoEn:ahora,actualizadoEn:ahora});});guardarUnidades([...nuevas,...actuales]);registrarMovimiento("Carga masiva de unidades",`Se registraron ${nuevas.length} unidades desde plantilla GPS`);return nuevas.length;},
-eliminar(id){const unidades=lista(),u=unidades.find(x=>x.id===id);if(!u)return false;liberarTablet(u.tabletActivoId,u.clave);guardarUnidades(unidades.filter(x=>x.id!==id));registrarMovimiento("Baja de unidad",`Se eliminó la unidad ${u.clave}`);return true;}
-};})(window);
+(function (global) {
+  "use strict";
+  const uuid = () =>
+    global.crypto?.randomUUID
+      ? crypto.randomUUID()
+      : Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const lista = () => obtenerUnidades();
+  const folio = () =>
+    `RTAB-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${String(lista().filter((u) => u.folioTablet).length + 1).padStart(4, "0")}`;
+  const liberarTablet = (activoId, unidadClave) => {
+    if (!activoId) return;
+    const activos = obtenerActivos(),
+      i = activos.findIndex((a) => a.id === activoId);
+    if (i >= 0 && activos[i].asignadoUnidad === unidadClave) {
+      activos[i] = {
+        ...activos[i],
+        estado: "Disponible",
+        responsable: "",
+        asignadoUnidad: "",
+        actualizadoEn: new Date().toISOString(),
+      };
+      guardarActivos(activos);
+    }
+  };
+  const asignarTablet = (activoId, unidadClave) => {
+    if (!activoId) return;
+    const activos = obtenerActivos(),
+      i = activos.findIndex(
+        (a) =>
+          a.id === activoId &&
+          a.categoria === "Tablet" &&
+          (a.estado === "Disponible" || a.asignadoUnidad === unidadClave),
+      );
+    if (i < 0) throw new Error("La tablet seleccionada ya no está disponible.");
+    activos[i] = {
+      ...activos[i],
+      estado: "Asignado",
+      responsable: `Unidad ${unidadClave}`,
+      asignadoUnidad: unidadClave,
+      empleadoId: "",
+      actualizadoEn: new Date().toISOString(),
+    };
+    guardarActivos(activos);
+  };
+  global.UnidadesCRUD = {
+    listar() {
+      return lista().map((x) => ({ ...x }));
+    },
+    obtener(id) {
+      return lista().find((x) => x.id === id) || null;
+    },
+    guardar(d) {
+      const unidades = lista(),
+        anterior = unidades.find((x) => x.id === d.id),
+        numero = String(d.numero || "")
+          .replace(/\D/g, "")
+          .padStart(3, "0"),
+        clave = `${d.tipo}-${numero}`,
+        tabletCambio =
+          (anterior?.tabletActivoId || "") !== (d.tabletActivoId || "");
+      if (!["TR", "DV", "FB", "CH", "C", "H"].includes(d.tipo))
+        throw new Error("La nomenclatura de la unidad no es válida.");
+      if (!numero || !/^\d+$/.test(String(d.numero)))
+        throw new Error("El número de unidad debe contener solo dígitos.");
+      if (unidades.some((x) => x.clave === clave && x.id !== d.id))
+        throw new Error(`La unidad ${clave} ya existe.`);
+      if (
+        unidades.some(
+          (x) => x.serieGPS === d.serieGPS.toUpperCase() && x.id !== d.id,
+        )
+      )
+        throw new Error("El número de serie del GPS ya está registrado.");
+      if (d.tipo !== "TR" && d.tabletActivoId)
+        throw new Error("Las tablets solo pueden vincularse a unidades TR.");
+      if (d.tabletActivoId && !d.operador.trim())
+        throw new Error("Captura el operador responsable de la tablet.");
+      if (d.tabletActivoId && tabletCambio && !d.firmaTablet)
+        throw new Error("La firma responsiva del operador es obligatoria.");
+      const ahora = new Date().toISOString(),
+        ubicacion =
+          d.latitud !== "" && d.longitud !== ""
+            ? {
+                latitud: Number(d.latitud),
+                longitud: Number(d.longitud),
+                fecha: ahora,
+              }
+            : null;
+      if (
+        ubicacion &&
+        (ubicacion.latitud > 90 ||
+          ubicacion.latitud < -90 ||
+          ubicacion.longitud > 180 ||
+          ubicacion.longitud < -180)
+      )
+        throw new Error("Las coordenadas GPS no son válidas.");
+      if (tabletCambio)
+        liberarTablet(anterior?.tabletActivoId, anterior?.clave);
+      asignarTablet(d.tabletActivoId, clave);
+      const tablet = d.tabletActivoId
+          ? obtenerActivos().find((a) => a.id === d.tabletActivoId)
+          : null,
+        nuevaResponsiva = d.tabletActivoId && tabletCambio;
+      const registro = {
+        id: d.id || uuid(),
+        tipo: d.tipo,
+        numero,
+        clave,
+        placas: d.placas.toUpperCase(),
+        serieGPS: d.serieGPS.toUpperCase(),
+        operador: d.operador,
+        estado: d.estado,
+        tabletActivoId: d.tipo === "TR" ? d.tabletActivoId || "" : "",
+        tablet: tablet ? { activo: tablet.activo, serie: tablet.serie } : null,
+        firmaTablet: nuevaResponsiva
+          ? d.firmaTablet
+          : d.tabletActivoId
+            ? anterior?.firmaTablet || ""
+            : "",
+        folioTablet: nuevaResponsiva
+          ? folio()
+          : d.tabletActivoId
+            ? anterior?.folioTablet || ""
+            : "",
+        fechaAsignacionTablet: nuevaResponsiva
+          ? ahora.slice(0, 10)
+          : d.tabletActivoId
+            ? anterior?.fechaAsignacionTablet || ""
+            : "",
+        ubicacion,
+        notas: d.notas,
+        creadoEn: anterior?.creadoEn || ahora,
+        actualizadoEn: ahora,
+      };
+      const i = unidades.findIndex((x) => x.id === registro.id);
+      if (i < 0) unidades.unshift(registro);
+      else unidades[i] = registro;
+      guardarUnidades(unidades);
+      registrarMovimiento(
+        d.id ? "Actualización de unidad" : "Alta de unidad",
+        `${d.id ? "Se actualizó" : "Se registró"} la unidad ${clave}`,
+      );
+      if (nuevaResponsiva)
+        registrarMovimiento(
+          "Responsiva de tablet",
+          `Se firmó ${registro.folioTablet} para la tablet ${tablet.activo} asignada a ${clave}`,
+        );
+      return registro;
+    },
+    importar(datos) {
+      if (!Array.isArray(datos) || !datos.length)
+        throw new Error("El archivo no contiene unidades.");
+      const actuales = lista(),
+        claves = new Set(actuales.map((u) => u.clave)),
+        series = new Set(
+          actuales.map((u) => String(u.serieGPS || "").toUpperCase()),
+        ),
+        estados = new Set(["Activa", "Mantenimiento", "Inactiva"]),
+        ahora = new Date().toISOString(),
+        nuevas = [];
+      datos.forEach((d, i) => {
+        const fila = i + 2,
+          tipo = String(d.tipo || "")
+            .trim()
+            .toUpperCase(),
+          numeroOriginal = String(d.numero ?? "").trim(),
+          numero = numeroOriginal.replace(/\D/g, "").padStart(3, "0"),
+          clave = `${tipo}-${numero}`,
+          serieGPS = String(d.serieGPS || "")
+            .trim()
+            .toUpperCase(),
+          estado = String(d.estado || "Activa").trim();
+        if (!["TR", "DV", "FB", "CH", "C", "H"].includes(tipo))
+          throw new Error(`Fila ${fila}: Tipo debe ser TR, DV, FB, CH, C o H.`);
+        if (!numeroOriginal || !/^\d+$/.test(numeroOriginal))
+          throw new Error(`Fila ${fila}: Número de unidad inválido.`);
+        if (!serieGPS)
+          throw new Error(`Fila ${fila}: Serie GPS es obligatoria.`);
+        if (claves.has(clave))
+          throw new Error(
+            `Fila ${fila}: La unidad ${clave} está duplicada o ya existe.`,
+          );
+        if (series.has(serieGPS))
+          throw new Error(
+            `Fila ${fila}: La serie GPS ${serieGPS} está duplicada o ya existe.`,
+          );
+        if (!estados.has(estado))
+          throw new Error(
+            `Fila ${fila}: Estado debe ser Activa, Mantenimiento o Inactiva.`,
+          );
+        const tieneLat = String(d.latitud ?? "").trim() !== "",
+          tieneLon = String(d.longitud ?? "").trim() !== "";
+        if (tieneLat !== tieneLon)
+          throw new Error(`Fila ${fila}: captura latitud y longitud juntas.`);
+        const lat = Number(d.latitud),
+          lon = Number(d.longitud);
+        if (
+          tieneLat &&
+          (!Number.isFinite(lat) ||
+            !Number.isFinite(lon) ||
+            lat < -90 ||
+            lat > 90 ||
+            lon < -180 ||
+            lon > 180)
+        )
+          throw new Error(`Fila ${fila}: coordenadas GPS inválidas.`);
+        claves.add(clave);
+        series.add(serieGPS);
+        nuevas.push({
+          id: uuid(),
+          tipo,
+          numero,
+          clave,
+          placas: String(d.placas || "")
+            .trim()
+            .toUpperCase(),
+          serieGPS,
+          operador: String(d.operador || "").trim(),
+          estado,
+          tabletActivoId: "",
+          tablet: null,
+          firmaTablet: "",
+          folioTablet: "",
+          fechaAsignacionTablet: "",
+          ubicacion: tieneLat
+            ? { latitud: lat, longitud: lon, fecha: ahora }
+            : null,
+          notas: String(d.notas || "").trim(),
+          creadoEn: ahora,
+          actualizadoEn: ahora,
+        });
+      });
+      guardarUnidades([...nuevas, ...actuales]);
+      registrarMovimiento(
+        "Carga masiva de unidades",
+        `Se registraron ${nuevas.length} unidades desde plantilla GPS`,
+      );
+      return nuevas.length;
+    },
+    eliminar(id) {
+      const unidades = lista(),
+        u = unidades.find((x) => x.id === id);
+      if (!u) return false;
+      liberarTablet(u.tabletActivoId, u.clave);
+      guardarUnidades(unidades.filter((x) => x.id !== id));
+      registrarMovimiento("Baja de unidad", `Se eliminó la unidad ${u.clave}`);
+      return true;
+    },
+  };
+})(window);
