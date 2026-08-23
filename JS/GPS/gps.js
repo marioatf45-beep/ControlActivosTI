@@ -17,7 +17,7 @@
     global.Swal
       ? Swal.fire({ icon, title, timer: 2200, showConfirmButton: false })
       : alert(title);
-  const nombresTipo = { TR: "Camión", DV: "Drive Van", FB: "FB", CH: "CH", C: "C", H: "H" };
+  const nombresTipo = { TR: "Camión", DV: "Drive Van", FB: "FlatBed", H: "Car Hauling", CH: "Car Hauling", C: "Automotive" };
   function descargarPlantillaGPS() {
     if (!global.XLSX)
       return avisoCarga("error", "No se pudo cargar el generador de Excel.");
@@ -58,7 +58,7 @@
     ];
     const instrucciones = XLSX.utils.aoa_to_sheet([
         ["INSTRUCCIONES"],
-        ["Tipos permitidos: TR, DV, FB, CH, C y H."],
+        ["Tipos permitidos: TR Camión, DV Drive Van, FB FlatBed, H Car Hauling, CH Car Hauling y C Automotive."],
         ["Numero y SerieGPS son obligatorios y no deben repetirse."],
         ["Estado permitido: Activa, Mantenimiento o Inactiva."],
         ["Latitud y Longitud son opcionales, pero deben capturarse juntas."],
@@ -67,13 +67,13 @@
         ],
       ]),
       catalogos = XLSX.utils.aoa_to_sheet([
-        ["Tipo", "Estado"],
-        ["TR", "Activa"],
-        ["DV", "Mantenimiento"],
-        ["FB", "Inactiva"],
-        ["CH", ""],
-        ["C", ""],
-        ["H", ""],
+        ["Tipo", "Descripción", "Estado permitido"],
+        ["TR", "Camión", "Activa"],
+        ["DV", "Drive Van", "Mantenimiento"],
+        ["FB", "FlatBed", "Inactiva"],
+        ["H", "Car Hauling", ""],
+        ["CH", "Car Hauling", ""],
+        ["C", "Automotive", ""],
       ]),
       wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Unidades");
