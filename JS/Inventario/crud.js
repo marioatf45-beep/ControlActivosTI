@@ -104,6 +104,9 @@ const InventarioCRUD = {
         document.getElementById("marca").value = activo.marca;
         document.getElementById("modelo").value = activo.modelo;
         document.getElementById("categoria").value = activo.categoria;
+        if (typeof Inventario !== "undefined") Inventario.actualizarCamposDispositivo(false);
+        document.getElementById("areaDispositivo").value = activo.areaDispositivo || "";
+        document.getElementById("imeiDispositivo").value = activo.imei || "";
         document.getElementById("estado").value = activo.estado;
         document.getElementById("ubicacion").value = activo.ubicacion;
         if (typeof Inventario !== "undefined") {
@@ -185,6 +188,10 @@ const InventarioCRUD = {
 
             categoria: document.getElementById("categoria").value,
 
+            areaDispositivo: document.getElementById("areaDispositivo").value.trim(),
+
+            imei: document.getElementById("imeiDispositivo").value.replace(/\D/g, ""),
+
             estado: document.getElementById("estado").value,
 
             ubicacion: document.getElementById("ubicacion").value.trim(),
@@ -218,6 +225,8 @@ const InventarioCRUD = {
         const serie = document.getElementById("serie").value.trim();
         const estado = document.getElementById("estado").value;
         const responsable = document.getElementById("responsable").value;
+        const categoria = document.getElementById("categoria").value;
+        const imei = document.getElementById("imeiDispositivo").value.replace(/\D/g, "");
 
         if (activo === "") {
 
@@ -243,6 +252,27 @@ const InventarioCRUD = {
 
         }
 
+        if (["Tablet", "Teléfono", "Celular"].includes(categoria) && imei && !/^\d{15}$/.test(imei)) {
+            Swal.fire(
+                "IMEI no válido",
+                "El IMEI debe contener exactamente 15 dígitos.",
+                "warning"
+            );
+            return false;
+        }
+
+        const imeiDuplicado = imei && obtenerActivos().some((item, index) =>
+            index !== this.indiceEditar && String(item.imei || "") === imei
+        );
+        if (imeiDuplicado) {
+            Swal.fire(
+                "IMEI duplicado",
+                "Este IMEI ya está registrado en otro dispositivo.",
+                "warning"
+            );
+            return false;
+        }
+
         if (estado === "Asignado" && responsable === "") {
 
             Swal.fire(
@@ -262,6 +292,7 @@ const InventarioCRUD = {
     limpiarFormulario() {
 
         document.getElementById("formActivo").reset();
+        if (typeof Inventario !== "undefined") Inventario.actualizarCamposDispositivo(true);
 
     },
 

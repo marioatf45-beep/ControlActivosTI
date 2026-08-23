@@ -37,7 +37,7 @@
                         type="text"
                         id="buscarActivo"
                         class="form-control"
-                        placeholder="Activo, serie, marca o responsable"
+                        placeholder="Activo, serie, marca, área, IMEI o responsable"
                     >
 
                 </div>
@@ -55,7 +55,7 @@
                         <option value="Desktop">Desktop</option>
                         <option value="Monitor">Monitor</option>
                         <option value="Tablet">Tablet</option>
-                        <option value="Teléfono">Teléfono</option>
+                        <option value="Teléfono">Teléfono / Celular</option>
                         <option value="Impresora">Impresora</option>
                         <option value="Accesorio">Accesorio</option>
                         <option value="Otro">Otro</option>
@@ -115,6 +115,7 @@
                             <th>Estado</th>
                             <th>Ubicación</th>
                             <th>Responsable</th>
+                            <th>Área / IMEI</th>
                             <th>Acciones</th>
                         </tr>
 
@@ -237,13 +238,30 @@
                                 <option value="Desktop">Desktop</option>
                                 <option value="Monitor">Monitor</option>
                                 <option value="Tablet">Tablet</option>
-                                <option value="Teléfono">Teléfono</option>
+                                <option value="Teléfono">Teléfono / Celular</option>
                                 <option value="Impresora">Impresora</option>
                                 <option value="Accesorio">Accesorio</option>
                                 <option value="Otro">Otro</option>
 
                             </select>
 
+                        </div>
+
+                        <div class="col-12" id="datosDispositivoMovil" hidden>
+                            <div class="row g-3 p-3 mx-0 border rounded bg-light">
+                                <div class="col-12">
+                                    <strong class="text-danger"><i class="fa-solid fa-mobile-screen-button me-1"></i>Datos del dispositivo móvil</strong>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="areaDispositivo" class="form-label">Área</label>
+                                    <input type="text" id="areaDispositivo" class="form-control" maxlength="100" placeholder="Ej. Operaciones, Tráfico o Administración">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="imeiDispositivo" class="form-label">IMEI del dispositivo</label>
+                                    <input type="text" id="imeiDispositivo" class="form-control" inputmode="numeric" maxlength="15" pattern="[0-9]{15}" placeholder="15 dígitos">
+                                    <div class="form-text">Captura los 15 dígitos sin espacios ni guiones.</div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="col-md-6">

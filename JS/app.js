@@ -119,7 +119,8 @@ async function cargarPagina(pagina) {
 
     try {
 
-        const versionVista = pagina === "entradas-salidas" ? "?v=1.1.0" : "";
+        const versionesVista = { "entradas-salidas": "1.1.0", inventario: "4.0.0" };
+        const versionVista = versionesVista[pagina] ? `?v=${versionesVista[pagina]}` : "";
         const respuesta = await fetch(`Views/${pagina}.html${versionVista}`);
 
         if (!respuesta.ok) {

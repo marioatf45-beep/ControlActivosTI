@@ -37,6 +37,7 @@ const Inventario = {
         const btnExportar = document.getElementById("btnExportarInventario");
         const modalActivo = document.getElementById("modalActivo");
         const responsable = document.getElementById("responsable");
+        const categoria = document.getElementById("categoria");
 
         if (btnGuardar) {
 
@@ -87,6 +88,11 @@ const Inventario = {
             };
         }
 
+        if (categoria) {
+            categoria.onchange = () => this.actualizarCamposDispositivo(true);
+            this.actualizarCamposDispositivo(false);
+        }
+
         if (modalActivo) {
 
             modalActivo.addEventListener("hidden.bs.modal", () => {
@@ -95,6 +101,7 @@ const Inventario = {
                 InventarioCRUD.editando = false;
                 InventarioCRUD.indiceEditar = null;
                 this.cargarResponsables();
+                this.actualizarCamposDispositivo(true);
 
                 const titulo = modalActivo.querySelector(".modal-title");
 
@@ -106,6 +113,18 @@ const Inventario = {
 
         }
 
+    },
+
+    actualizarCamposDispositivo(limpiar = false) {
+        const categoria = document.getElementById("categoria")?.value;
+        const grupo = document.getElementById("datosDispositivoMovil");
+        const esMovil = ["Tablet", "Teléfono", "Celular"].includes(categoria);
+        if (!grupo) return;
+        grupo.hidden = !esMovil;
+        if (!esMovil && limpiar) {
+            document.getElementById("areaDispositivo").value = "";
+            document.getElementById("imeiDispositivo").value = "";
+        }
     },
 
     cargarResponsables(seleccionId = "", nombreAnterior = "") {
@@ -190,6 +209,10 @@ const Inventario = {
                 "<td>" + this.crearEtiquetaEstado(activo.estado) + "</td>" +
                 "<td>" + this.escaparTexto(activo.ubicacion) + "</td>" +
                 "<td>" + this.escaparTexto(activo.responsable) + "</td>" +
+                "<td>" + (activo.areaDispositivo || activo.imei ?
+                    "<strong>" + this.escaparTexto(activo.areaDispositivo || "Sin área") + "</strong>" +
+                    (activo.imei ? "<small class=\"d-block text-muted\">IMEI: " + this.escaparTexto(activo.imei) + "</small>" : "")
+                    : "—") + "</td>" +
                 '<td class="text-nowrap">' +
                     '<button type="button" ' +
                         'class="btn btn-info btn-sm me-1" ' +
@@ -226,7 +249,7 @@ const Inventario = {
 
             columnDefs: [
                 {
-                    targets: 8,
+                    targets: 9,
                     orderable: false,
                     searchable: false
                 }
@@ -341,6 +364,8 @@ const Inventario = {
             "Estado": activo.estado || "",
             "Ubicación": activo.ubicacion || "",
             "Responsable": activo.responsable || "",
+            "Área": activo.areaDispositivo || "",
+            "IMEI": activo.imei || "",
             "Requisición": activo.requisicion || "",
             "Costo de compra": costo,
             "Fecha de compra": activo.fechaCompra || "",
