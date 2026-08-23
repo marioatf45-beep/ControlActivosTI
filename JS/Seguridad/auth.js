@@ -82,11 +82,12 @@
 
             if (data?.session?.user) {
                 try {
-                    await this.cargarUsuario(data.session.user);
                     const esRecuperacion = location.hash.includes("type=recovery") || new URLSearchParams(location.search).get("type") === "recovery";
                     if (esRecuperacion) {
                         await this.mostrarPortal(true);
+                        return;
                     }
+                    await this.cargarUsuario(data.session.user);
                     return;
                 } catch (err) {
                     console.error(err);
@@ -189,12 +190,13 @@
                 const portal = document.createElement("div");
                 portal.id = "portalAcceso";
                 portal.className = "access-portal";
-                portal.innerHTML = `<section class="access-brand"><img src="Assets/logo-dtroy-acceso.png" alt="D-Troy Logistics LLC"><div><span>CONTROL DE ACTIVOS TI</span><h1>Administración segura de equipos, unidades y servicios.</h1><p>Accede al portal corporativo para continuar.</p></div><small>© ${new Date().getFullYear()} D-Troy Logistics LLC</small></section><section class="access-panel"><div class="access-box"><div class="access-form-logo"><img src="Assets/logo-dtroy-acceso.png" alt="D-Troy Logistics LLC"></div><form id="formAcceso" class="access-form"><span class="access-kicker">PORTAL CORPORATIVO</span><h2>Bienvenido</h2><p>Ingresa tu usuario o correo y contraseña.</p><label>Usuario o correo<input id="accesoUsuario" autocomplete="username" required></label><label>Contraseña<div class="access-password"><input id="accesoClave" type="password" autocomplete="current-password" required><button type="button" data-ver="accesoClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div></label><div class="access-error" id="errorAcceso" hidden></div><button class="access-primary" type="submit">Iniciar sesión <i class="fa-solid fa-arrow-right"></i></button><button class="access-link" id="irRegistro" type="button">¿No tienes cuenta? Crear una nueva</button></form><form id="formRegistro" class="access-form" hidden><span class="access-kicker">NUEVA CUENTA</span><h2>Crear una cuenta</h2><p>Tu cuenta tendrá acceso inicial al portal ServiceDesk.</p><div class="access-grid"><label>Nombre<input id="registroNombre" autocomplete="given-name" required></label><label>Apellido<input id="registroApellido" autocomplete="family-name" required></label></div><label>Correo electrónico<input id="registroCorreo" type="email" autocomplete="email" required></label><label>Área o departamento<input id="registroArea" required></label><label>Nueva contraseña<div class="access-password"><input id="registroClave" type="password" minlength="12" autocomplete="new-password" required><button type="button" data-ver="registroClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div><small>12 caracteres, mayúscula, minúscula, número y signo especial.</small></label><label>Confirmar contraseña<input id="registroConfirmacion" type="password" minlength="12" autocomplete="new-password" required></label><div class="access-error" id="errorRegistro" hidden></div><button class="access-primary" type="submit">Crear cuenta <i class="fa-solid fa-user-plus"></i></button><button class="access-link" id="irAcceso" type="button">Ya tengo cuenta. Iniciar sesión</button></form><form id="formCambioClave" class="access-form" hidden><span class="access-kicker">SEGURIDAD DE ACCESO</span><h2>Actualiza tu contraseña</h2><p>Crea una contraseña nueva para continuar.</p><label>Nueva contraseña<div class="access-password"><input id="cambioClave" type="password" minlength="12" autocomplete="new-password" required><button type="button" data-ver="cambioClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div><small>12 caracteres, mayúscula, minúscula, número y signo especial.</small></label><label>Confirmar contraseña<input id="cambioConfirmacion" type="password" minlength="12" autocomplete="new-password" required></label><div class="access-error" id="errorCambioClave" hidden></div><button class="access-primary" type="submit">Actualizar y continuar <i class="fa-solid fa-shield-halved"></i></button></form></div></section>`;
+                portal.innerHTML = `<section class="access-brand"><img src="Assets/logo-dtroy-acceso.png" alt="D-Troy Logistics LLC"><div><span>CONTROL DE ACTIVOS TI</span><h1>Administración segura de equipos, unidades y servicios.</h1><p>Accede al portal corporativo para continuar.</p></div><small>© ${new Date().getFullYear()} D-Troy Logistics LLC</small></section><section class="access-panel"><div class="access-box"><div class="access-form-logo"><img src="Assets/logo-dtroy-acceso.png" alt="D-Troy Logistics LLC"></div><form id="formAcceso" class="access-form"><span class="access-kicker">PORTAL CORPORATIVO</span><h2>Bienvenido</h2><p>Ingresa tu usuario o correo y contraseña.</p><label>Usuario o correo<input id="accesoUsuario" autocomplete="username" required></label><label>Contraseña<div class="access-password"><input id="accesoClave" type="password" autocomplete="current-password" required><button type="button" data-ver="accesoClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div></label><div class="access-error" id="errorAcceso" hidden></div><button class="access-primary" type="submit">Iniciar sesión <i class="fa-solid fa-arrow-right"></i></button><button class="access-link" id="irRecuperar" type="button">¿Olvidaste tu contraseña?</button><button class="access-link access-link-secondary" id="irRegistro" type="button">¿No tienes cuenta? Crear una nueva</button></form><form id="formRecuperacion" class="access-form" hidden><span class="access-kicker">RECUPERAR ACCESO</span><h2>Restablece tu contraseña</h2><p>Escribe el correo registrado. Te enviaremos un enlace seguro.</p><label>Correo electrónico<input id="recuperacionCorreo" type="email" autocomplete="email" required></label><div class="access-error" id="errorRecuperacion" hidden></div><button class="access-primary" type="submit">Enviar enlace <i class="fa-solid fa-envelope"></i></button><button class="access-link" id="volverAcceso" type="button">Volver a iniciar sesión</button></form><form id="formRegistro" class="access-form" hidden><span class="access-kicker">NUEVA CUENTA</span><h2>Crear una cuenta</h2><p>Tu cuenta tendrá acceso inicial al portal ServiceDesk.</p><div class="access-grid"><label>Nombre<input id="registroNombre" autocomplete="given-name" required></label><label>Apellido<input id="registroApellido" autocomplete="family-name" required></label></div><label>Correo electrónico<input id="registroCorreo" type="email" autocomplete="email" required></label><label>Área o departamento<input id="registroArea" required></label><label>Nueva contraseña<div class="access-password"><input id="registroClave" type="password" minlength="12" autocomplete="new-password" required><button type="button" data-ver="registroClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div><small>12 caracteres, mayúscula, minúscula, número y signo especial.</small></label><label>Confirmar contraseña<input id="registroConfirmacion" type="password" minlength="12" autocomplete="new-password" required></label><div class="access-error" id="errorRegistro" hidden></div><button class="access-primary" type="submit">Crear cuenta <i class="fa-solid fa-user-plus"></i></button><button class="access-link" id="irAcceso" type="button">Ya tengo cuenta. Iniciar sesión</button></form><form id="formCambioClave" class="access-form" hidden><span class="access-kicker">SEGURIDAD DE ACCESO</span><h2>Actualiza tu contraseña</h2><p>Crea una contraseña nueva para continuar.</p><label>Nueva contraseña<div class="access-password"><input id="cambioClave" type="password" minlength="12" autocomplete="new-password" required><button type="button" data-ver="cambioClave" aria-label="Mostrar contraseña"><i class="fa-solid fa-eye"></i></button></div><small>12 caracteres, mayúscula, minúscula, número y signo especial.</small></label><label>Confirmar contraseña<input id="cambioConfirmacion" type="password" minlength="12" autocomplete="new-password" required></label><div class="access-error" id="errorCambioClave" hidden></div><button class="access-primary" type="submit">Actualizar contraseña <i class="fa-solid fa-shield-halved"></i></button></form></div></section>`;
 
                 document.body.appendChild(portal);
                 document.body.classList.add("access-locked");
                 registro = portal.querySelector("#formRegistro");
                 const login = portal.querySelector("#formAcceso");
+                const recuperacion = portal.querySelector("#formRecuperacion");
                 const cambio = portal.querySelector("#formCambioClave");
                 const mostrar = (actual, ...otros) => {
                     actual.hidden = false;
@@ -202,10 +204,12 @@
                     actual.querySelector("input")?.focus();
                 };
 
-                if (forzarCambio) mostrar(cambio, login, registro);
+                if (forzarCambio) mostrar(cambio, login, recuperacion, registro);
 
-                portal.querySelector("#irRegistro").onclick = () => mostrar(registro, login, cambio);
-                portal.querySelector("#irAcceso").onclick = () => mostrar(login, registro, cambio);
+                portal.querySelector("#irRecuperar").onclick = () => mostrar(recuperacion, login, registro, cambio);
+                portal.querySelector("#volverAcceso").onclick = () => mostrar(login, recuperacion, registro, cambio);
+                portal.querySelector("#irRegistro").onclick = () => mostrar(registro, login, recuperacion, cambio);
+                portal.querySelector("#irAcceso").onclick = () => mostrar(login, registro, recuperacion, cambio);
                 portal.querySelectorAll("button[data-ver]").forEach(boton => {
                     boton.onclick = () => {
                         const input = portal.querySelector("#" + boton.dataset.ver);
@@ -270,6 +274,30 @@
                     }
                 };
 
+                recuperacion.onsubmit = async event => {
+                    event.preventDefault();
+                    const errorNodo = portal.querySelector("#errorRecuperacion");
+                    const email = portal.querySelector("#recuperacionCorreo").value.trim().toLowerCase();
+                    const boton = recuperacion.querySelector("button[type='submit']");
+                    errorNodo.hidden = true;
+                    boton.disabled = true;
+
+                    const redirectTo = `${location.origin}${location.pathname}?type=recovery`;
+                    const { error } = await client().auth.resetPasswordForEmail(email, { redirectTo });
+                    boton.disabled = false;
+
+                    if (error) {
+                        errorNodo.textContent = error.message?.toLowerCase().includes("rate")
+                            ? "Espera un minuto antes de solicitar otro enlace."
+                            : "No fue posible enviar el enlace. Intenta nuevamente.";
+                        errorNodo.hidden = false;
+                        return;
+                    }
+
+                    await Swal.fire("Revisa tu correo", "Si el correo está registrado, recibirás un enlace para crear una contraseña nueva.", "success");
+                    mostrar(login, recuperacion, registro, cambio);
+                };
+
                 registro.onsubmit = async event => {
                     event.preventDefault();
                     const errorNodo = portal.querySelector("#errorRegistro");
@@ -323,18 +351,29 @@
                         return;
                     }
 
-                    const { error } = await client().auth.updateUser({ password });
+                    const { data: updated, error } = await client().auth.updateUser({ password });
                     if (error) {
                         errorNodo.textContent = error.message;
                         errorNodo.hidden = false;
                         return;
                     }
 
-                    await client().from("profiles")
+                    const userId = this.usuario?.id || updated?.user?.id;
+                    if (userId) await client().from("profiles")
                         .update({ password_changed_at: new Date().toISOString() })
-                        .eq("id", this.usuario.id);
+                        .eq("id", userId);
+
+                    if (forzarCambio) {
+                        await client().auth.signOut();
+                        this.usuario = null;
+                        history.replaceState({}, document.title, location.pathname);
+                        cambio.reset();
+                        await Swal.fire("Contraseña actualizada", "Ya puedes iniciar sesión con tu contraseña nueva.", "success");
+                        mostrar(login, cambio, recuperacion, registro);
+                        return;
+                    }
+
                     this.usuario.fechaCambioClave = new Date().toISOString();
-                    history.replaceState({}, document.title, `${location.pathname}${location.search ? "?version=5.2.0" : ""}`);
                     this.cerrarPortal(portal);
                     resolve();
                 };
